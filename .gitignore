@@ -1,0 +1,39 @@
+# Node / Bun
+
+node_modules
+bun.lockb
+
+# Build outputs
+
+dist
+build
+.vite
+
+# Logs
+
+*.log
+
+# Env files
+
+.env
+.env.local
+
+# Tauri / Rust
+
+src-tauri/target
+src-tauri/Cargo.lock
+
+# OS
+
+.DS_Store
+Thumbs.db
+
+# IDE
+
+.vscode
+.idea
+
+# Temporary
+
+tmp
+.cache
