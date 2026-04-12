@@ -79,6 +79,25 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_commits_repo_committed_at
             ON commits(repo_id, committed_at);
 
+        CREATE TABLE IF NOT EXISTS commit_parents (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            repo_id             INTEGER NOT NULL,
+            commit_hash         TEXT NOT NULL,
+            parent_hash         TEXT NOT NULL,
+            parent_index        INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (repo_id) REFERENCES repositories(id) ON DELETE CASCADE,
+            UNIQUE(repo_id, commit_hash, parent_hash, parent_index)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_commit_parents_repo_id
+            ON commit_parents(repo_id);
+
+        CREATE INDEX IF NOT EXISTS idx_commit_parents_commit_hash
+            ON commit_parents(commit_hash);
+
+        CREATE INDEX IF NOT EXISTS idx_commit_parents_parent_hash
+            ON commit_parents(parent_hash);
+
         CREATE TABLE IF NOT EXISTS commit_file_stats (
             id                  INTEGER PRIMARY KEY AUTOINCREMENT,
             repo_id             INTEGER NOT NULL,

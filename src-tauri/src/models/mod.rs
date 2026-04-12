@@ -1,5 +1,6 @@
 pub mod repository;
 pub mod commit;
+pub mod commit_parent;
 pub mod file_change;
 pub mod working_tree;
 pub mod contributor;

@@ -3,6 +3,7 @@ pub mod migrations;
 pub mod repositories;
 pub mod branches;
 pub mod commits;
+pub mod commit_parents;
 pub mod file_stats;
 pub mod working_tree;
 pub mod analytics;
