@@ -58,33 +58,102 @@ gitradar/
 ### Prerequisites
 
 * Bun
-* Node.js (optional fallback)
 * Rust (latest stable)
-* Tauri CLI
+* Just (task runner - optional but recommended)
+* Tauri CLI (auto-installed with setup)
 
 ---
 
-### Install dependencies
+### Quick Setup (Recommended)
+
+Run the setup script to configure everything automatically:
 
 ```bash
-bun install
+./scripts/setup.sh
 ```
 
+This script will:
+- Check for required dependencies (Bun, Rust)
+- Install Node.js dependencies
+- Install Tauri CLI
+- Verify system requirements
+
 ---
 
-### Run development app
+### Development Commands
+
+#### Using Just (Recommended)
 
 ```bash
+# Setup development environment
+just setup
+
+# Start development server with hot reload
+just dev
+
+# Run all tests (TypeScript + Rust)
+just test
+
+# Clean build artifacts
+just clean
+
+# Build for production
+just build
+
+# Package the application
+just package
+
+# Format code
+just fmt
+
+# Run linter
+just lint
+
+# Watch for changes and auto-rebuild
+just watch
+
+# Show all available commands
+just info
+```
+
+#### Using Scripts
+
+```bash
+# Start development server with hot reload
+./scripts/dev.sh
+# or
 bun run tauri dev
+
+# Run all tests (TypeScript + Rust)
+./scripts/test.sh
+
+# Clean build artifacts
+./scripts/clean.sh
+
+# Build for production
+./scripts/build.sh
+# or
+bun run tauri build
+
+# Package the application
+./scripts/package.sh
 ```
 
 ---
 
-### Build for production
+### Manual Setup
 
-```bash
-bun run tauri build
-```
+If you prefer to set up manually:
+
+1. **Install dependencies**
+   ```bash
+   bun install
+   ```
+
+2. **Start development**
+   ```bash
+   bun run tauri dev
+   ```
 
 ---
 
@@ -372,9 +441,14 @@ gitradar/
 │   └── roadmap.md
 │
 ├── scripts/
-│   ├── dev.sh
-│   ├── build.sh
-│   └── package.sh
+│   ├── setup.sh      # Initial environment setup
+│   ├── dev.sh        # Start development server
+│   ├── build.sh      # Build for production
+│   ├── test.sh       # Run all tests
+│   ├── clean.sh      # Clean build artifacts
+│   └── package.sh    # Package the application
+│
+├── justfile           # Just task runner commands
 │
 ├── .gitignore
 ├── package.json

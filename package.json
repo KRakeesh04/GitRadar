@@ -7,7 +7,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "tsc --noEmit",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "bun test",
+    "clean": "./scripts/clean.sh",
+    "setup": "./scripts/setup.sh"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",
