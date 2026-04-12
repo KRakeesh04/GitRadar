@@ -97,6 +97,21 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_commit_file_stats_repo_file
             ON commit_file_stats(repo_id, file_path);
 
+        CREATE TABLE IF NOT EXISTS commit_branches (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            commit_id           INTEGER NOT NULL,
+            branch_id           INTEGER NOT NULL,
+            FOREIGN KEY (commit_id) REFERENCES commits(id) ON DELETE CASCADE,
+            FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
+            UNIQUE(commit_id, branch_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_commit_branches_commit_id
+            ON commit_branches(commit_id);
+
+        CREATE INDEX IF NOT EXISTS idx_commit_branches_branch_id
+            ON commit_branches(branch_id);
+
         CREATE TABLE IF NOT EXISTS working_tree_status (
             id                  INTEGER PRIMARY KEY AUTOINCREMENT,
             repo_id             INTEGER NOT NULL,
