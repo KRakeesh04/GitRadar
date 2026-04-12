@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+dist/
+build/
+
+# Generated files
+*.log
+*.tgz
+*.tar.gz
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Rust
+src-tauri/target/
+Cargo.lock
+
+# Tauri specific
+src-tauri/src-tauri-generated/

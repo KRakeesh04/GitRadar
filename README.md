@@ -157,6 +157,67 @@ If you prefer to set up manually:
 
 ---
 
+### Code Quality & Formatting
+
+GitRadar uses automated tools to maintain consistent code quality and formatting across both TypeScript and Rust codebases.
+
+#### Using Just (Recommended)
+
+```bash
+# Format all code (TypeScript + Rust)
+just fmt
+
+# Check formatting without fixing
+just fmt-check
+
+# Run all linters
+just lint
+
+# Fix auto-fixable linting issues
+just lint-fix
+
+# Run type checks for both TS and Rust
+just type-check
+
+# Complete code quality check
+just check
+```
+
+#### Using NPM Scripts
+
+```bash
+# TypeScript/React
+bun run format          # Format TS/React code
+bun run format:check    # Check formatting
+bun run lint           # Run ESLint
+bun run lint:fix       # Fix linting issues
+bun run type-check     # TypeScript type check
+
+# Rust
+bun run rust:fmt       # Format Rust code
+bun run rust:lint      # Run Clippy
+bun run rust:check     # Rust type check
+
+# All checks
+bun run check:all      # Run all checks
+```
+
+#### Configuration Files
+
+- **`.prettierrc`** - TypeScript/React formatting rules
+- **`.eslintrc.json`** - TypeScript/React linting rules  
+- **`src-tauri/rustfmt.toml`** - Rust formatting configuration
+- **`.prettierignore`** & **`.eslintignore`** - Excluded files
+
+The formatting ensures:
+- Consistent indentation (2 spaces for TS, 4 for Rust)
+- Proper line length (100 chars max)
+- Consistent quote usage and trailing commas
+- Automatic import organization
+- Type safety enforcement
+
+---
+
 ## 🧠 Core Concepts
 
 GitRadar works by:
@@ -339,13 +400,8 @@ gitradar/
 │   │   │   ├── format.ts
 │   │   │   ├── date.ts
 │   │   │   ├── constants.ts
+│   │   │   ├── type.ts
 │   │   │   └── helpers.ts
-│   │   │
-│   │   ├── types/
-│   │   │   ├── repository.ts
-│   │   │   ├── commit.ts
-│   │   │   ├── file.ts
-│   │   │   └── analytics.ts
 │   │   │
 │   │   └── lib/
 │   │       ├── queryClient.ts

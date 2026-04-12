@@ -10,7 +10,16 @@
     "tauri": "tauri",
     "test": "bun test",
     "clean": "./scripts/clean.sh",
-    "setup": "./scripts/setup.sh"
+    "setup": "./scripts/setup.sh",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "type-check": "tsc --noEmit",
+    "rust:check": "cd src-tauri && cargo check",
+    "rust:fmt": "cd src-tauri && cargo fmt",
+    "rust:lint": "cd src-tauri && cargo clippy -- -D warnings",
+    "check:all": "bun run type-check && bun run format:check && bun run lint && bun run rust:check && bun run rust:lint"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",
@@ -19,13 +28,20 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "typescript": "^6.0.2",
-    "vite": "^8.0.5"
+    "vite": "^8.0.5",
+    "prettier": "^3.2.5",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.1.1",
+    "@typescript-eslint/parser": "^7.1.1",
+    "eslint-plugin-react": "^7.34.1",
+    "eslint-plugin-react-hooks": "^4.6.0"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.96.2",
     "@tanstack/react-router": "^1.168.10",
     "@tanstack/router-cli": "^1.166.25",
     "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-sql": "~2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "recharts": "^3.8.1"
