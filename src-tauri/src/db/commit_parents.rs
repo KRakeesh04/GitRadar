@@ -110,3 +110,23 @@ pub fn get_commit_graph_data(conn: &Connection, repo_id: i64, limit: Option<i32>
 
     Ok(graph_data.filter_map(Result::ok).collect())
 }
+
+// Update commit hash references
+pub fn update_commit_hash_references(
+    conn: &Connection,
+    repo_id: i64,
+    old_hash: &str,
+    new_hash: &str,
+) -> Result<()> {
+    conn.execute(
+        "UPDATE commit_parents SET commit_hash = ?1 WHERE repo_id = ?2 AND commit_hash = ?3",
+        params![new_hash, repo_id, old_hash],
+    )?;
+
+    conn.execute(
+        "UPDATE commit_parents SET parent_hash = ?1 WHERE repo_id = ?2 AND parent_hash = ?3",
+        params![new_hash, repo_id, old_hash],
+    )?;
+
+    Ok(())
+}

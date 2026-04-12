@@ -267,3 +267,105 @@ pub fn get_commits_with_parents(conn: &Connection, repo_id: i64, limit: Option<i
     Ok(result)
 }
 
+// Update commit hash (for rebase, cherry-pick, etc.)
+pub fn update_commit_hash(
+    conn: &Connection,
+    repo_id: i64,
+    old_hash: &str,
+    new_hash: &str,
+) -> Result<bool> {
+    let tx = conn.transaction()?;
+
+    let updated = tx.execute(
+        "UPDATE commits SET hash = ?1 WHERE repo_id = ?2 AND hash = ?3",
+        params![new_hash, repo_id, old_hash],
+    )?;
+
+    if updated == 0 {
+        tx.rollback()?;
+        return Ok(false);
+    }
+
+    tx.execute(
+        "UPDATE commit_parents SET commit_hash = ?1 WHERE repo_id = ?2 AND commit_hash = ?3",
+        params![new_hash, repo_id, old_hash],
+    )?;
+
+    tx.execute(
+        "UPDATE commit_parents SET parent_hash = ?1 WHERE repo_id = ?2 AND parent_hash = ?3",
+        params![new_hash, repo_id, old_hash],
+    )?;
+
+    tx.execute(
+        "UPDATE commit_file_stats SET commit_hash = ?1 WHERE repo_id = ?2 AND commit_hash = ?3",
+        params![new_hash, repo_id, old_hash],
+    )?;
+
+    tx.commit()?;
+    Ok(true)
+}
+
+// Update complete commit (hash + message + author)
+pub fn update_commit_complete(
+    conn: &Connection,
+    repo_id: i64,
+    old_hash: &str,
+    new_commit: &Commit,
+) -> Result<bool> {
+    let tx = conn.transaction()?;
+
+    let updated = tx.execute(
+        "UPDATE commits SET 
+            hash = ?, 
+            author_name = ?, 
+            author_email = ?, 
+            committer_name = ?, 
+            committer_email = ?, 
+            subject = ?, 
+            body = ? 
+         WHERE repo_id = ? AND hash = ?",
+        params![
+            new_commit.hash,
+            new_commit.author_name,
+            new_commit.author_email,
+            new_commit.committer_name,
+            new_commit.committer_email,
+            new_commit.subject,
+            new_commit.body,
+            repo_id,
+            old_hash,
+        ],
+    )?;
+
+    if updated == 0 {
+        tx.rollback()?;
+        return Ok(false);
+    }
+
+    crate::db::commit_parents::update_commit_hash_references(
+        &tx, repo_id, old_hash, &new_commit.hash
+    )?;
+
+    tx.commit()?;
+    Ok(true)
+}
+
+// Batch update commit hashes (for large rebase operations)
+pub fn batch_update_commit_hashes(
+    conn: &Connection,
+    repo_id: i64,
+    hash_mappings: &[(String, String)],
+) -> Result<usize> {
+    let tx = conn.transaction()?;
+    let mut total_updated = 0;
+
+    for (old_hash, new_hash) in hash_mappings {
+        if update_commit_hash(&tx, repo_id, old_hash, new_hash)? {
+            total_updated += 1;
+        }
+    }
+
+    tx.commit()?;
+    Ok(total_updated)
+}
+
