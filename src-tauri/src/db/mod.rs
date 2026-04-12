@@ -7,5 +7,6 @@ pub mod commit_parents;
 pub mod file_stats;
 pub mod working_tree;
 pub mod analytics;
+pub mod contributors;
 pub mod snapshots;
 pub mod settings;
