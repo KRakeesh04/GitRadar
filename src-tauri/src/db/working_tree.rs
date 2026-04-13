@@ -1,5 +1,5 @@
-use rusqlite::{params, Connection, Result};
 use crate::models::working_tree::WorkingTreeStatus;
+use rusqlite::{params, Connection, Result};
 
 pub fn insert_working_tree(
     conn: &Connection,
@@ -25,7 +25,15 @@ pub fn insert_working_tree(
         )
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
         "#,
-        params![repo_id, modified_count, staged_count, untracked_count, deleted_count, renamed_count, now],
+        params![
+            repo_id,
+            modified_count,
+            staged_count,
+            untracked_count,
+            deleted_count,
+            renamed_count,
+            now
+        ],
     )?;
 
     Ok(conn.last_insert_rowid())
@@ -54,16 +62,21 @@ pub fn update_working_tree_status(
             captured_at = ?7
         WHERE id = ?1
         "#,
-        params![id, modified_count, staged_count, untracked_count, deleted_count, renamed_count, now],
+        params![
+            id,
+            modified_count,
+            staged_count,
+            untracked_count,
+            deleted_count,
+            renamed_count,
+            now
+        ],
     )?;
 
     Ok(())
 }
 
-pub fn get_working_tree_status(
-    conn: &Connection,
-    repo_id: i64,
-) -> Result<WorkingTreeStatus> {
+pub fn get_working_tree_status(conn: &Connection, repo_id: i64) -> Result<WorkingTreeStatus> {
     let mut stmt = conn.prepare(
         r#"
         SELECT 
@@ -100,9 +113,7 @@ pub fn get_working_tree_status(
     }
 }
 
-pub fn get_all_working_tree_statuses(
-    conn: &Connection,
-) -> Result<Vec<WorkingTreeStatus>> {
+pub fn get_all_working_tree_statuses(conn: &Connection) -> Result<Vec<WorkingTreeStatus>> {
     let mut stmt = conn.prepare(
         r#"
         SELECT 
@@ -138,13 +149,7 @@ pub fn get_all_working_tree_statuses(
     Ok(results)
 }
 
-pub fn delete_working_tree_status(
-    conn: &Connection,
-    id: i64,
-) -> Result<()> {
-    conn.execute(
-        "DELETE FROM working_tree_status WHERE id = ?1",
-        params![id],
-    )?;
+pub fn delete_working_tree_status(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM working_tree_status WHERE id = ?1", params![id])?;
     Ok(())
 }

@@ -1,5 +1,5 @@
+use crate::models::contributor::Contributor;
 use rusqlite::{params, Connection, Result};
-use crate::models::Contributor;
 
 pub fn insert_contributor(
     conn: &Connection,
@@ -23,8 +23,15 @@ pub fn insert_contributor(
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
         "#,
         params![
-            repo_id, author_name, author_email, commit_count,
-            additions, deletions, active_days, last_commit_at, updated_at
+            repo_id,
+            author_name,
+            author_email,
+            commit_count,
+            additions,
+            deletions,
+            active_days,
+            last_commit_at,
+            updated_at
         ],
     )?;
 
@@ -53,8 +60,15 @@ pub fn upsert_contributor(
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
         "#,
         params![
-            repo_id, author_name, author_email, commit_count,
-            additions, deletions, active_days, last_commit_at, updated_at
+            repo_id,
+            author_name,
+            author_email,
+            commit_count,
+            additions,
+            deletions,
+            active_days,
+            last_commit_at,
+            updated_at
         ],
     )?;
 
@@ -67,7 +81,7 @@ pub fn get_contributors_by_repo(conn: &Connection, repo_id: i64) -> Result<Vec<C
                 additions, deletions, active_days, last_commit_at, updated_at 
          FROM contributors 
          WHERE repo_id = ?1 
-         ORDER BY commit_count DESC"
+         ORDER BY commit_count DESC",
     )?;
 
     let contributors = stmt.query_map([repo_id], |row| {
@@ -97,7 +111,7 @@ pub fn get_contributor_by_email(
         "SELECT id, repo_id, author_name, author_email, commit_count, 
                 additions, deletions, active_days, last_commit_at, updated_at 
          FROM contributors 
-         WHERE repo_id = ?1 AND author_email = ?2"
+         WHERE repo_id = ?1 AND author_email = ?2",
     )?;
 
     let contributor = stmt.query_map(params![repo_id, author_email], |row| {
@@ -115,7 +129,8 @@ pub fn get_contributor_by_email(
         })
     })?;
 
-    Ok(contributor.filter_map(Result::ok).next())
+    let result: Vec<Contributor> = contributor.filter_map(Result::ok).collect();
+    Ok(result.into_iter().next())
 }
 
 pub fn update_contributor_stats(
@@ -138,8 +153,14 @@ pub fn update_contributor_stats(
         WHERE repo_id = ?7 AND author_email = ?8
         "#,
         params![
-            commit_count, additions, deletions, active_days, 
-            last_commit_at, updated_at, repo_id, author_email
+            commit_count,
+            additions,
+            deletions,
+            active_days,
+            last_commit_at,
+            updated_at,
+            repo_id,
+            author_email
         ],
     )?;
 
@@ -155,7 +176,8 @@ pub fn get_top_contributors(
                    additions, deletions, active_days, last_commit_at, updated_at 
             FROM contributors 
             WHERE repo_id = ?1 
-            ORDER BY commit_count DESC".to_string();
+            ORDER BY commit_count DESC"
+        .to_string();
 
     if let Some(limit) = limit {
         sql.push_str(&format!(" LIMIT {}", limit));

@@ -1,5 +1,6 @@
+use crate::models::contributor::Contributor;
+use crate::models::RepoActivityDaily;
 use rusqlite::{params, Connection, Result};
-use crate::models::{RepoActivityDaily, Contributor};
 
 pub fn insert_repo_activity_daily(
     conn: &Connection,
@@ -17,7 +18,14 @@ pub fn insert_repo_activity_daily(
         )
         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
         "#,
-        params![repo_id, activity_date, commit_count, additions, deletions, files_changed],
+        params![
+            repo_id,
+            activity_date,
+            commit_count,
+            additions,
+            deletions,
+            files_changed
+        ],
     )?;
 
     Ok(())
@@ -29,28 +37,32 @@ pub fn get_repo_activity_daily(
     start_date: Option<&str>,
     end_date: Option<&str>,
 ) -> Result<Vec<RepoActivityDaily>> {
-    let mut sql = "SELECT id, repo_id, activity_date, commit_count, additions, deletions, files_changed 
-                   FROM repo_activity_daily WHERE repo_id = ?1".to_string();
-    
-    let mut params: Vec<&dyn rusqlite::ToSql> = vec![&repo_id];
+    let mut sql =
+        "SELECT id, repo_id, activity_date, commit_count, additions, deletions, files_changed 
+                   FROM repo_activity_daily WHERE repo_id = ?1"
+            .to_string();
+
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(repo_id)];
     let mut param_index = 2;
 
     if let Some(start_date) = start_date {
         sql.push_str(&format!(" AND activity_date >= ?{}", param_index));
-        params.push(&start_date);
+        params.push(Box::new(start_date.clone()));
         param_index += 1;
     }
 
     if let Some(end_date) = end_date {
         sql.push_str(&format!(" AND activity_date <= ?{}", param_index));
-        params.push(&end_date);
+        params.push(Box::new(end_date.clone()));
     }
 
     sql.push_str(" ORDER BY activity_date DESC");
 
     let mut stmt = conn.prepare(&sql)?;
 
-    let activities = stmt.query_map(params.as_slice(), |row| {
+    let activities = stmt.query_map(
+        params.iter().map(|p| p.as_ref()).collect::<Vec<&dyn rusqlite::ToSql>>().as_slice(),
+        |row| {
         Ok(RepoActivityDaily {
             id: row.get(0)?,
             repo_id: row.get(1)?,
@@ -70,7 +82,7 @@ pub fn get_contributors(conn: &Connection, repo_id: i64) -> Result<Vec<Contribut
         "SELECT id, repo_id, author_name, author_email, commit_count, 
                 additions, deletions, active_days, last_commit_at, updated_at 
          FROM contributors WHERE repo_id = ?1 
-         ORDER BY commit_count DESC"
+         ORDER BY commit_count DESC",
     )?;
 
     let contributors = stmt.query_map([repo_id], |row| {

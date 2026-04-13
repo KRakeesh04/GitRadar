@@ -1,5 +1,5 @@
-use rusqlite::{Connection, Result};
-use crate::models::Commit;
+use crate::models::commit::Commit;
+use rusqlite::{Connection, Result, params};
 
 pub fn insert_commit(
     conn: &Connection,
@@ -58,17 +58,14 @@ pub fn insert_commit(
         INSERT INTO commit_branches (commit_id, branch_id) 
         VALUES (?, ?)
         "#,
-        params![
-            commit_id,
-            branch_id
-        ],
+        params![commit_id, branch_id],
     )?;
 
     // Insert parent relationships
     if !parent_hashes.is_empty() {
         crate::db::commit_parents::insert_commit_parents_batch(conn, repo_id, hash, parent_hashes)?;
     }
-    
+
     Ok(commit_id)
 }
 
@@ -77,9 +74,9 @@ pub fn get_commit_by_hash(conn: &Connection, repo_id: i64, hash: &str) -> Result
         "SELECT id, repo_id, hash, author_name, author_email, committer_name, committer_email, 
                 subject, body, parent_count, committed_at, inserted_at 
          FROM commits 
-         WHERE repo_id = ? AND hash = ?"
+         WHERE repo_id = ? AND hash = ?",
     )?;
-    
+
     let commit = stmt.query_row(params![repo_id, hash], |row| {
         Ok(Commit {
             id: row.get(0)?,
@@ -96,7 +93,7 @@ pub fn get_commit_by_hash(conn: &Connection, repo_id: i64, hash: &str) -> Result
             inserted_at: row.get(11)?,
         })
     });
-    
+
     match commit {
         Ok(c) => Ok(Some(c)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
@@ -110,9 +107,9 @@ pub fn get_commits_by_repo(conn: &Connection, repo_id: i64) -> Result<Vec<Commit
                 subject, body, parent_count, committed_at, inserted_at 
          FROM commits 
          WHERE repo_id = ?
-         ORDER BY committed_at DESC"
+         ORDER BY committed_at DESC",
     )?;
-    
+
     let commits = stmt.query_map(params![repo_id], |row| {
         Ok(Commit {
             id: row.get(0)?,
@@ -129,16 +126,20 @@ pub fn get_commits_by_repo(conn: &Connection, repo_id: i64) -> Result<Vec<Commit
             inserted_at: row.get(11)?,
         })
     })?;
-    
+
     let mut result = Vec::new();
     for commit in commits {
         result.push(commit?);
     }
-    
+
     Ok(result)
 }
 
-pub fn get_commits_by_branch(conn: &Connection, repo_id: i64, branch_name: &str) -> Result<Vec<Commit>> {
+pub fn get_commits_by_branch(
+    conn: &Connection,
+    repo_id: i64,
+    branch_name: &str,
+) -> Result<Vec<Commit>> {
     let mut stmt = conn.prepare(
         "SELECT c.id, c.repo_id, c.hash, c.author_name, c.author_email, c.committer_name, c.committer_email,
                 c.subject, c.body, c.parent_count, c.committed_at, c.inserted_at 
@@ -148,7 +149,7 @@ pub fn get_commits_by_branch(conn: &Connection, repo_id: i64, branch_name: &str)
          WHERE c.repo_id = ? AND b.name = ?
          ORDER BY c.committed_at DESC"
     )?;
-    
+
     let commits = stmt.query_map(params![repo_id, branch_name], |row| {
         Ok(Commit {
             id: row.get(0)?,
@@ -165,12 +166,12 @@ pub fn get_commits_by_branch(conn: &Connection, repo_id: i64, branch_name: &str)
             inserted_at: row.get(11)?,
         })
     })?;
-    
+
     let mut result = Vec::new();
     for commit in commits {
         result.push(commit?);
     }
-    
+
     Ok(result)
 }
 
@@ -196,7 +197,7 @@ pub fn get_working_tree_commits(conn: &Connection, repo_id: i64) -> Result<Vec<C
          WHERE c.repo_id = ? AND b.name NOT LIKE 'origin/%'
          ORDER BY c.committed_at DESC"
     )?;
-    
+
     let commits = stmt.query_map(params![repo_id], |row| {
         Ok(Commit {
             id: row.get(0)?,
@@ -213,17 +214,21 @@ pub fn get_working_tree_commits(conn: &Connection, repo_id: i64) -> Result<Vec<C
             inserted_at: row.get(11)?,
         })
     })?;
-    
+
     let mut result = Vec::new();
     for commit in commits {
         result.push(commit?);
     }
-    
+
     Ok(result)
 }
 
 // Get commits with their parent relationships for graph building
-pub fn get_commits_with_parents(conn: &Connection, repo_id: i64, limit: Option<i32>) -> Result<Vec<(Commit, Vec<String>)>> {
+pub fn get_commits_with_parents(
+    conn: &Connection,
+    repo_id: i64,
+    limit: Option<i32>,
+) -> Result<Vec<(Commit, Vec<String>)>> {
     let mut sql = "SELECT c.id, c.repo_id, c.hash, c.author_name, c.author_email, c.committer_name, c.committer_email, 
                           c.subject, c.body, c.parent_count, c.committed_at, c.inserted_at 
                    FROM commits c 
@@ -269,45 +274,41 @@ pub fn get_commits_with_parents(conn: &Connection, repo_id: i64, limit: Option<i
 
 // Update commit hash (for rebase, cherry-pick, etc.)
 pub fn update_commit_hash(
-    conn: &Connection,
+    conn: &mut Connection,
     repo_id: i64,
     old_hash: &str,
     new_hash: &str,
 ) -> Result<bool> {
-    let tx = conn.transaction()?;
-
-    let updated = tx.execute(
+    let updated = conn.execute(
         "UPDATE commits SET hash = ?1 WHERE repo_id = ?2 AND hash = ?3",
         params![new_hash, repo_id, old_hash],
     )?;
 
     if updated == 0 {
-        tx.rollback()?;
         return Ok(false);
     }
 
-    tx.execute(
+    conn.execute(
         "UPDATE commit_parents SET commit_hash = ?1 WHERE repo_id = ?2 AND commit_hash = ?3",
         params![new_hash, repo_id, old_hash],
     )?;
 
-    tx.execute(
+    conn.execute(
         "UPDATE commit_parents SET parent_hash = ?1 WHERE repo_id = ?2 AND parent_hash = ?3",
         params![new_hash, repo_id, old_hash],
     )?;
 
-    tx.execute(
+    conn.execute(
         "UPDATE commit_file_stats SET commit_hash = ?1 WHERE repo_id = ?2 AND commit_hash = ?3",
         params![new_hash, repo_id, old_hash],
     )?;
 
-    tx.commit()?;
     Ok(true)
 }
 
 // Update complete commit (hash + message + author)
 pub fn update_commit_complete(
-    conn: &Connection,
+    conn: &mut Connection,
     repo_id: i64,
     old_hash: &str,
     new_commit: &Commit,
@@ -343,7 +344,10 @@ pub fn update_commit_complete(
     }
 
     crate::db::commit_parents::update_commit_hash_references(
-        &tx, repo_id, old_hash, &new_commit.hash
+        &tx,
+        repo_id,
+        old_hash,
+        &new_commit.hash,
     )?;
 
     tx.commit()?;
@@ -352,20 +356,17 @@ pub fn update_commit_complete(
 
 // Batch update commit hashes (for large rebase operations)
 pub fn batch_update_commit_hashes(
-    conn: &Connection,
+    conn: &mut Connection,
     repo_id: i64,
     hash_mappings: &[(String, String)],
 ) -> Result<usize> {
-    let tx = conn.transaction()?;
     let mut total_updated = 0;
 
     for (old_hash, new_hash) in hash_mappings {
-        if update_commit_hash(&tx, repo_id, old_hash, new_hash)? {
+        if update_commit_hash(conn, repo_id, old_hash, new_hash)? {
             total_updated += 1;
         }
     }
 
-    tx.commit()?;
     Ok(total_updated)
 }
-

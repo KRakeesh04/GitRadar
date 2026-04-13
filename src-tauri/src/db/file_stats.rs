@@ -1,6 +1,6 @@
-use rusqlite::{params, Connection, Result};
 use crate::models::file_change::CommitFileStat;
 use crate::models::file_change::FileHotspot;
+use rusqlite::{params, Connection, Result};
 
 pub fn insert_commit_file_stat(
     conn: &Connection,
@@ -31,7 +31,7 @@ pub fn insert_commit_file_stat(
 pub fn get_file_stats(conn: &Connection, repo_id: i64) -> Result<Vec<CommitFileStat>> {
     let mut stmt = conn.prepare(
         r#"
-        SELECT id, repo_id, file_path, additions, deletions, captured_at
+        SELECT id, repo_id, commit_hash, file_path, change_type, additions, deletions, captured_at
         FROM commit_file_stats
         WHERE repo_id = ?
         ORDER BY captured_at DESC
@@ -42,10 +42,12 @@ pub fn get_file_stats(conn: &Connection, repo_id: i64) -> Result<Vec<CommitFileS
         Ok(CommitFileStat {
             id: row.get(0)?,
             repo_id: row.get(1)?,
-            file_path: row.get(2)?,
-            additions: row.get(3)?,
-            deletions: row.get(4)?,
-            total_changes: row.get(3)? + row.get(4)?,
+            commit_hash: row.get(2)?,
+            file_path: row.get(3)?,
+            change_type: row.get(4)?,
+            additions: row.get(5)?,
+            deletions: row.get(6)?,
+            total_changes: row.get::<usize, i32>(5)? + row.get::<usize, i32>(6)?,
         })
     })?;
 
@@ -57,10 +59,14 @@ pub fn get_file_stats(conn: &Connection, repo_id: i64) -> Result<Vec<CommitFileS
     Ok(result)
 }
 
-pub fn get_file_stats_by_path(conn: &Connection, repo_id: i64, file_path: &str) -> Result<Vec<CommitFileStat>> {
+pub fn get_file_stats_by_path(
+    conn: &Connection,
+    repo_id: i64,
+    file_path: &str,
+) -> Result<Vec<CommitFileStat>> {
     let mut stmt = conn.prepare(
         r#"
-        SELECT id, repo_id, file_path, additions, deletions, captured_at
+        SELECT id, repo_id, commit_hash, file_path, change_type, additions, deletions, captured_at
         FROM commit_file_stats
         WHERE repo_id = ? AND file_path = ?
         ORDER BY captured_at DESC
@@ -71,10 +77,12 @@ pub fn get_file_stats_by_path(conn: &Connection, repo_id: i64, file_path: &str) 
         Ok(CommitFileStat {
             id: row.get(0)?,
             repo_id: row.get(1)?,
-            file_path: row.get(2)?,
-            additions: row.get(3)?,
-            deletions: row.get(4)?,
-            total_changes: row.get(3)? + row.get(4)?,
+            commit_hash: row.get(2)?,
+            file_path: row.get(3)?,
+            change_type: row.get(4)?,
+            additions: row.get(5)?,
+            deletions: row.get(6)?,
+            total_changes: row.get::<usize, i32>(5)? + row.get::<usize, i32>(6)?,
         })
     })?;
 
@@ -122,7 +130,15 @@ pub fn insert_file_hotspot(
         )
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
         "#,
-        params![repo_id, file_path, touch_count, churn_score, hotspot_score, last_touched_at, now],
+        params![
+            repo_id,
+            file_path,
+            touch_count,
+            churn_score,
+            hotspot_score,
+            last_touched_at,
+            now
+        ],
     )?;
 
     Ok(conn.last_insert_rowid())
@@ -158,4 +174,3 @@ pub fn get_file_hotspots(conn: &Connection, repo_id: i64) -> Result<Vec<FileHots
 
     Ok(result)
 }
-

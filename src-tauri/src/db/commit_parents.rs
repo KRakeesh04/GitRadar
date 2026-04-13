@@ -1,5 +1,5 @@
+use crate::models::commit_parent::CommitParent;
 use rusqlite::{params, Connection, Result};
-use crate::models::CommitParent;
 
 pub fn insert_commit_parent(
     conn: &Connection,
@@ -33,12 +33,16 @@ pub fn insert_commit_parents_batch(
     Ok(())
 }
 
-pub fn get_commit_parents(conn: &Connection, repo_id: i64, commit_hash: &str) -> Result<Vec<CommitParent>> {
+pub fn get_commit_parents(
+    conn: &Connection,
+    repo_id: i64,
+    commit_hash: &str,
+) -> Result<Vec<CommitParent>> {
     let mut stmt = conn.prepare(
         "SELECT id, repo_id, commit_hash, parent_hash, parent_index 
          FROM commit_parents 
          WHERE repo_id = ?1 AND commit_hash = ?2 
-         ORDER BY parent_index ASC"
+         ORDER BY parent_index ASC",
     )?;
 
     let parents = stmt.query_map(params![repo_id, commit_hash], |row| {
@@ -54,12 +58,16 @@ pub fn get_commit_parents(conn: &Connection, repo_id: i64, commit_hash: &str) ->
     Ok(parents.filter_map(Result::ok).collect())
 }
 
-pub fn get_commit_children(conn: &Connection, repo_id: i64, parent_hash: &str) -> Result<Vec<CommitParent>> {
+pub fn get_commit_children(
+    conn: &Connection,
+    repo_id: i64,
+    parent_hash: &str,
+) -> Result<Vec<CommitParent>> {
     let mut stmt = conn.prepare(
         "SELECT id, repo_id, commit_hash, parent_hash, parent_index 
          FROM commit_parents 
          WHERE repo_id = ?1 AND parent_hash = ?2 
-         ORDER BY commit_hash ASC"
+         ORDER BY commit_hash ASC",
     )?;
 
     let children = stmt.query_map(params![repo_id, parent_hash], |row| {
@@ -80,15 +88,20 @@ pub fn delete_commit_parents(conn: &Connection, repo_id: i64, commit_hash: &str)
         "DELETE FROM commit_parents WHERE repo_id = ?1 AND commit_hash = ?2",
         params![repo_id, commit_hash],
     )?;
-    Ok(result)
+    Ok(result as i64)
 }
 
 // Get commit graph data for visualization
-pub fn get_commit_graph_data(conn: &Connection, repo_id: i64, limit: Option<i32>) -> Result<Vec<(String, Vec<String>)>> {
+pub fn get_commit_graph_data(
+    conn: &Connection,
+    repo_id: i64,
+    limit: Option<i32>,
+) -> Result<Vec<(String, Vec<String>)>> {
     let mut sql = "SELECT DISTINCT cp.commit_hash, GROUP_CONCAT(cp.parent_hash, ',') 
                    FROM commit_parents cp 
                    WHERE cp.repo_id = ?1 
-                   GROUP BY cp.commit_hash".to_string();
+                   GROUP BY cp.commit_hash"
+        .to_string();
 
     if let Some(limit) = limit {
         sql.push_str(&format!(" LIMIT {}", limit));
@@ -99,7 +112,7 @@ pub fn get_commit_graph_data(conn: &Connection, repo_id: i64, limit: Option<i32>
     let graph_data = stmt.query_map([repo_id], |row| {
         let commit_hash: String = row.get(0)?;
         let parents_csv: Option<String> = row.get(1)?;
-        
+
         let parents = match parents_csv {
             Some(csv) => csv.split(',').map(|s| s.to_string()).collect(),
             None => Vec::new(),

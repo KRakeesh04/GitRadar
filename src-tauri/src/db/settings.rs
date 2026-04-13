@@ -1,10 +1,8 @@
+use crate::models::setting::Setting;
 use rusqlite::{params, Connection, Result};
-use crate::models::Setting;
 
 pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<Setting>> {
-    let mut stmt = conn.prepare(
-        "SELECT key, value, updated_at FROM settings WHERE key = ?1"
-    )?;
+    let mut stmt = conn.prepare("SELECT key, value, updated_at FROM settings WHERE key = ?1")?;
 
     let setting = stmt.query_map([key], |row| {
         Ok(Setting {
@@ -14,7 +12,8 @@ pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<Setting>> {
         })
     })?;
 
-    Ok(setting.filter_map(Result::ok).next())
+    let result: Vec<Setting> = setting.filter_map(Result::ok).collect();
+    Ok(result.into_iter().next())
 }
 
 pub fn upsert_setting(conn: &Connection, key: &str, value: &str) -> Result<()> {
@@ -32,9 +31,7 @@ pub fn upsert_setting(conn: &Connection, key: &str, value: &str) -> Result<()> {
 }
 
 pub fn get_all_settings(conn: &Connection) -> Result<Vec<Setting>> {
-    let mut stmt = conn.prepare(
-        "SELECT key, value, updated_at FROM settings ORDER BY key"
-    )?;
+    let mut stmt = conn.prepare("SELECT key, value, updated_at FROM settings ORDER BY key")?;
 
     let settings = stmt.query_map([], |row| {
         Ok(Setting {

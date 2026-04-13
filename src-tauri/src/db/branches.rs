@@ -1,5 +1,5 @@
+use crate::models::branch::Branch;
 use rusqlite::{params, Connection, Result};
-use crate::models::Branch;
 
 pub fn insert_branch(
     conn: &Connection,
@@ -23,8 +23,15 @@ pub fn insert_branch(
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
         "#,
         params![
-            repo_id, name, is_head, is_default, last_commit_hash,
-            last_commit_at, ahead_count, behind_count, now
+            repo_id,
+            name,
+            is_head,
+            is_default,
+            last_commit_hash,
+            last_commit_at,
+            ahead_count,
+            behind_count,
+            now
         ],
     )?;
 
@@ -35,7 +42,7 @@ pub fn get_branch_by_name(conn: &Connection, repo_id: i64, name: &str) -> Result
     let mut stmt = conn.prepare(
         "SELECT id, repo_id, name, is_head, is_default, last_commit_hash, 
                 last_commit_at, ahead_count, behind_count, updated_at 
-         FROM branches WHERE repo_id = ?1 AND name = ?2"
+         FROM branches WHERE repo_id = ?1 AND name = ?2",
     )?;
 
     let branch = stmt.query_row(params![repo_id, name], |row| {
@@ -64,7 +71,7 @@ pub fn get_all_branches(conn: &Connection, repo_id: i64) -> Result<Vec<Branch>> 
     let mut stmt = conn.prepare(
         "SELECT id, repo_id, name, is_head, is_default, last_commit_hash, 
                 last_commit_at, ahead_count, behind_count, updated_at 
-         FROM branches WHERE repo_id = ?1 ORDER BY name"
+         FROM branches WHERE repo_id = ?1 ORDER BY name",
     )?;
 
     let branches = stmt.query_map([repo_id], |row| {
@@ -86,7 +93,11 @@ pub fn get_all_branches(conn: &Connection, repo_id: i64) -> Result<Vec<Branch>> 
 }
 
 // return id and whether it was created (true if new, false if existing)
-pub fn get_or_create_branch(conn: &Connection, repo_id: i64, name: &str) -> Result<(i64, bool), bool> {
+pub fn get_or_create_branch(
+    conn: &Connection,
+    repo_id: i64,
+    name: &str,
+) -> Result<(i64, bool), rusqlite::Error> {
     if let Some(branch) = get_branch_by_name(conn, repo_id, name)? {
         Ok((branch.id, false))
     } else {

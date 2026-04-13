@@ -8,3 +8,6 @@ pub mod analytics;
 pub mod snapshot;
 pub mod setting;
 pub mod branch;
+
+pub use repository::Repository;
+pub use analytics::{RepoActivityDaily, RepoSummary};
