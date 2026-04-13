@@ -19,6 +19,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             name                TEXT NOT NULL,
             path                TEXT NOT NULL UNIQUE,
             git_dir_path        TEXT NOT NULL,
+            remote_url          TEXT,
             default_branch      TEXT,
             head_branch         TEXT,
             is_dirty            INTEGER NOT NULL DEFAULT 0,

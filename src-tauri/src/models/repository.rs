@@ -7,6 +7,7 @@ pub struct Repository {
     pub name: String,
     pub path: String,
     pub git_dir_path: String,
+    pub remote_url: String,
     pub default_branch: Option<String>,
     pub head_branch: Option<String>,
     pub is_dirty: bool,

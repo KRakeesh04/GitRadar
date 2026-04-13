@@ -7,6 +7,7 @@ pub fn insert_repository(
     name: &str,
     path: &str,
     git_dir_path: &str,
+    remote_url: &str,
 ) -> Result<i64> {
     let now = chrono::Utc::now().to_rfc3339();
 
@@ -17,12 +18,13 @@ pub fn insert_repository(
             name,
             path,
             git_dir_path,
+            remote_url,
             created_at,
             updated_at
         )
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
         "#,
-        params![root_id, name, path, git_dir_path, now, now],
+        params![root_id, name, path, git_dir_path, remote_url, now, now],
     )?;
 
     Ok(conn.last_insert_rowid())
@@ -30,7 +32,7 @@ pub fn insert_repository(
 
 pub fn get_repository_by_id(conn: &Connection, id: i64) -> Result<Option<Repository>> {
     let mut stmt = conn.prepare(
-        "SELECT id, root_id, name, path, git_dir_path, default_branch, head_branch, 
+        "SELECT id, root_id, name, path, git_dir_path, remote_url, default_branch, head_branch, 
                 is_dirty, last_commit_hash, last_commit_at, last_scanned_at, 
                 last_indexed_at, index_status, created_at, updated_at 
          FROM repositories WHERE id = ?1"
@@ -61,7 +63,7 @@ pub fn get_repository_by_id(conn: &Connection, id: i64) -> Result<Option<Reposit
 
 pub fn get_all_repositories(conn: &Connection) -> Result<Vec<Repository>> {
 	let mut stmt = conn.prepare(
-        "SELECT id, root_id, name, path, git_dir_path, default_branch, head_branch, 
+        "SELECT id, root_id, name, path, git_dir_path, remote_url, default_branch, head_branch, 
                 is_dirty, last_commit_hash, last_commit_at, last_scanned_at, 
                 last_indexed_at, index_status, created_at, updated_at 
          FROM repositories ORDER BY updated_at DESC"
@@ -74,16 +76,17 @@ pub fn get_all_repositories(conn: &Connection) -> Result<Vec<Repository>> {
             name: row.get(2)?,
             path: row.get(3)?,
             git_dir_path: row.get(4)?,
-            default_branch: row.get(5)?,
-            head_branch: row.get(6)?,
-            is_dirty: row.get(7)?,
-            last_commit_hash: row.get(8)?,
-            last_commit_at: row.get(9)?,
-            last_scanned_at: row.get(10)?,
-            last_indexed_at: row.get(11)?,
-            index_status: row.get(12)?,
-            created_at: row.get(13)?,
-            updated_at: row.get(14)?,
+            remote_url: row.get(5)?,
+            default_branch: row.get(6)?,
+            head_branch: row.get(8)?,
+            is_dirty: row.get(9)?,
+            last_commit_hash: row.get(10)?,
+            last_commit_at: row.get(11)?,
+            last_scanned_at: row.get(12)?,
+            last_indexed_at: row.get(13)?,
+            index_status: row.get(14)?,
+            created_at: row.get(15)?,
+            updated_at: row.get(16)?,
 			})
 	})?;
 
