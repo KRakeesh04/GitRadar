@@ -1,13 +1,15 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod state;
 mod commands;
+mod core;
 mod db;
+mod models;
+mod state;
 
-use tauri::Manager;
-use std::path::PathBuf;
 use state::AppState;
+use std::path::PathBuf;
+use tauri::Manager;
 
 fn main() {
     tauri::Builder::default()
@@ -17,8 +19,7 @@ fn main() {
                 .app_data_dir()
                 .expect("failed to get app data dir");
 
-            std::fs::create_dir_all(&app_data_dir)
-                .expect("failed to create app data dir");
+            std::fs::create_dir_all(&app_data_dir).expect("failed to create app data dir");
 
             let db_path = app_data_dir.join("gitradar.db");
 
@@ -30,7 +31,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::repos::scan_repositories,
+            commands::repos::get_all_repositories,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri app");
