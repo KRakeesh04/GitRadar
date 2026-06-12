@@ -1,298 +1,506 @@
 # GitRadar API Contract
 
-GitRadar uses Tauri commands as the communication layer between the frontend (React + TanStack) and the backend (Rust). The frontend invokes commands through a thin client wrapper, and the backend returns structured JSON-compatible responses.
-
-All commands must follow consistent rules:
-- Inputs must be well-defined JSON objects
-- Outputs must be typed and predictable
-- Errors must follow a consistent structure
-- Internal Rust logic must not leak into the API surface
+Version: 2.0
 
 ---
 
-## Error Format
+# API Principles
 
-All errors returned from backend should follow this shape:
+All Tauri commands must:
 
-{
-  "code": "ERROR_CODE",
-  "message": "Human readable message",
-  "details": null
-}
+* Return typed responses
+* Never expose internal database structure
+* Return predictable errors
+* Support pagination
+* Support cancellation
 
 ---
 
-## Commands
+# Standard Response
 
-### select_tracked_root
+## Success
 
-Registers a root directory for scanning.
-
-Input:
+```json
 {
-  "path": "/home/user/projects"
+  "success": true,
+  "data": {}
 }
+```
 
-Output:
+## Error
+
+```json
 {
-  "id": 1,
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Description"
+  }
+}
+```
+
+---
+
+# Root Folder Commands
+
+## add_root
+
+Input
+
+```json
+{
   "path": "/home/user/projects",
+  "name": "Projects"
+}
+```
+
+Output
+
+```json
+{
+  "id": 1
+}
+```
+
+---
+
+## update_root
+
+Input
+
+```json
+{
+  "rootId": 1,
+  "name": "Work Projects",
   "isEnabled": true
 }
+```
 
 ---
 
-### get_tracked_roots
+## delete_root
 
-Returns all tracked root directories.
+Input
 
-Input:
-{}
-
-Output:
-[
-  {
-    "id": 1,
-    "path": "/home/user/projects",
-    "isEnabled": true
-  }
-]
-
----
-
-### scan_repositories
-
-Scans a tracked root and discovers Git repositories.
-
-Input:
+```json
 {
   "rootId": 1
 }
+```
 
-Output:
+---
+
+## get_roots
+
+Output
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Projects",
+    "path": "/home/user/projects",
+    "repositoryCount": 22
+  }
+]
+```
+
+---
+
+# Repository Commands
+
+## scan_root
+
+Manual discovery.
+
+```json
 {
-  "discoveredCount": 12,
-  "repositories": [
+  "rootId": 1
+}
+```
+
+---
+
+## get_repositories
+
+Supports:
+
+* Search
+* Pagination
+* Filtering
+
+```json
+{
+  "page": 1,
+  "pageSize": 50
+}
+```
+
+---
+
+## get_repository
+
+Returns:
+
+* Metadata
+* Statistics
+* Activity
+
+```json
+{
+  "repoId": 12
+}
+```
+
+---
+
+## refresh_repository
+
+Forces re-index.
+
+---
+
+# Commit Graph Commands
+
+## get_commit_graph
+
+Required for commit tree UI.
+
+Input
+
+```json
+{
+  "repoId": 12
+}
+```
+
+Output
+
+```json
+{
+  "nodes": [
     {
-      "id": 5,
-      "name": "gitradar",
-      "path": "/home/user/projects/gitradar",
-      "defaultBranch": "main",
-      "headBranch": "feature/ui",
-      "isEnabled": true
+      "hash": "abc123",
+      "branch": "main",
+      "parents": []
     }
   ]
 }
+```
 
 ---
 
-### get_repositories
+## get_commit_details
 
-Returns tracked repositories with optional filtering.
+Input
 
-Input:
+```json
 {
-  "rootId": 1,
-  "search": "",
-  "includeDisabled": false
+  "repoId": 12,
+  "commitHash": "abc123"
 }
+```
 
-Output:
-[
-  {
-    "id": 5,
-    "name": "gitradar",
-    "path": "/home/user/projects/gitradar",
-    "defaultBranch": "main",
-    "headBranch": "feature/ui",
-    "lastScannedAt": "2026-04-07T10:00:00Z",
-    "isEnabled": true
-  }
-]
+Output
+
+```json
+{
+  "hash": "abc123",
+  "message": "Initial commit",
+  "author": "John",
+  "filesChanged": 12
+}
+```
 
 ---
 
-### get_repository_details
+# File Explorer Commands
 
-Returns detailed information about a repository.
+## get_repository_tree
 
-Input:
+Returns directory structure.
+
+Input
+
+```json
 {
-  "repoId": 5
+  "repoId": 12
 }
+```
 
-Output:
+Output
+
+```json
 {
-  "id": 5,
-  "name": "gitradar",
-  "path": "/home/user/projects/gitradar",
-  "defaultBranch": "main",
-  "headBranch": "feature/ui",
-  "workingTree": {
-    "modifiedCount": 2,
-    "stagedCount": 1,
-    "untrackedCount": 3,
-    "deletedCount": 0
-  },
-  "lastActivityAt": "2026-04-07T10:10:00Z",
-  "healthScore": 82.5
+  "children": []
 }
+```
 
 ---
 
-### get_repository_commits
+## get_file_content
 
-Returns paginated commit history.
+Input
 
-Input:
+```json
 {
-  "repoId": 5,
-  "limit": 50,
-  "offset": 0
+  "repoId": 12,
+  "path": "src/main.rs"
 }
+```
 
-Output:
+Output
+
+```json
 {
-  "items": [
-    {
-      "hash": "abc123",
-      "authorName": "User",
-      "authorEmail": "user@example.com",
-      "messageSubject": "Add initial dashboard",
-      "committedAt": "2026-04-07T08:20:00Z",
-      "parentCount": 1
-    }
-  ],
-  "total": 314
+  "content": "...",
+  "isBinary": false
 }
+```
 
 ---
 
-### get_commit_activity
+# Diff Commands
 
-Returns commit counts grouped by time.
+## get_working_tree_diff
 
-Input:
+Input
+
+```json
 {
-  "repoId": 5,
-  "groupBy": "day",
-  "rangeDays": 30
+  "repoId": 12
 }
-
-Output:
-[
-  {
-    "bucket": "2026-04-01",
-    "count": 4
-  },
-  {
-    "bucket": "2026-04-02",
-    "count": 2
-  }
-]
+```
 
 ---
 
-### get_file_hotspots
+## get_commit_diff
 
-Returns top hotspot files.
+Input
 
-Input:
+```json
 {
-  "repoId": 5,
-  "limit": 20
+  "repoId": 12,
+  "commitHash": "abc123"
 }
-
-Output:
-[
-  {
-    "filePath": "src/app/router/routes/dashboard.tsx",
-    "touchCount": 14,
-    "churnScore": 220,
-    "hotspotScore": 58.2,
-    "lastTouchedAt": "2026-04-07T08:20:00Z"
-  }
-]
+```
 
 ---
 
-### get_contributor_stats
+## compare_commits
 
-Returns contributor analytics.
+Input
 
-Input:
+```json
 {
-  "repoId": 5
+  "repoId": 12,
+  "fromCommit": "abc",
+  "toCommit": "xyz"
 }
-
-Output:
-[
-  {
-    "authorName": "User",
-    "authorEmail": "user@example.com",
-    "commitCount": 140,
-    "churn": 4200,
-    "activeDays": 32
-  }
-]
+```
 
 ---
 
-### refresh_repository
+## compare_branches
 
-Triggers re-indexing for a repository.
+Input
 
-Input:
+```json
 {
-  "repoId": 5
+  "repoId": 12,
+  "sourceBranch": "main",
+  "targetBranch": "feature/auth"
 }
-
-Output:
-{
-  "success": true,
-  "refreshedAt": "2026-04-07T10:30:00Z"
-}
+```
 
 ---
 
-### get_settings
+# Analytics Commands
 
-Returns application settings.
+## get_dashboard_metrics
 
-Input:
-{}
+Returns:
 
-Output:
-{
-  "theme": "dark",
-  "watcherEnabled": true,
-  "scanIntervalSeconds": 10
-}
+* Total repositories
+* Active repositories
+* Commits
+* Activity
 
 ---
 
-### update_settings
+## get_repository_analytics
 
-Updates application settings.
+Returns:
 
-Input:
-{
-  "theme": "light",
-  "watcherEnabled": true,
-  "scanIntervalSeconds": 15
-}
-
-Output:
-{
-  "success": true
-}
+* Hotspots
+* Churn
+* Health
+* Contributors
 
 ---
 
-## Notes
+## get_hotspot_files
 
-- Frontend should call commands through a centralized client (e.g., `tauriClient`)
-- Types should be mirrored in both Rust and TypeScript
-- Pagination must be used for large datasets
-- Avoid exposing internal database or filesystem structure directly
-- Keep API stable even if backend implementation evolves
+Returns ranked hotspot files.
+
+---
+
+## get_contributors
+
+Returns contributor statistics.
+
+---
+
+# Search Commands
+
+## search
+
+Global search.
+
+Input
+
+```json
+{
+  "query": "auth",
+  "limit": 50
+}
+```
+
+Searches:
+
+* Repositories
+* Files
+* Branches
+* Commits
+
+---
+
+# Sync Commands
+
+## get_sync_status
+
+Output
+
+```json
+{
+  "running": true,
+  "queuedJobs": 3,
+  "activeJobs": 1
+}
+```
+
+---
+
+## pause_sync
+
+---
+
+## resume_sync
+
+---
+
+# Settings Commands
+
+## get_settings
+
+---
+
+## update_settings
+
+Supports:
+
+* Theme
+* Refresh interval
+* Analytics preferences
+
+---
+
+# Audit Commands
+
+## get_audit_logs
+
+Input
+
+```json
+{
+  "page": 1,
+  "pageSize": 100
+}
+```
+
+---
+
+# Future WakaTime Commands
+
+## connect_wakatime
+
+Input
+
+```json
+{
+  "apiKey": "encrypted"
+}
+```
+
+---
+
+## sync_wakatime
+
+Manual sync.
+
+---
+
+## get_wakatime_stats
+
+Returns:
+
+* Daily time
+* Weekly time
+* Monthly time
+* Languages
+
+---
+
+# Future Git Operations
+
+## git_fetch
+
+## git_pull
+
+## git_push
+
+## git_merge
+
+## git_checkout
+
+All commands must pass through Git Sandbox.
+
+No arbitrary shell execution.
+
+---
+
+# Pagination Standard
+
+All paginated endpoints:
+
+```json
+{
+  "items": [],
+  "total": 1200,
+  "page": 1,
+  "pageSize": 50
+}
+```
+
+---
+
+# Security Rules
+
+Commands must:
+
+* Validate repository ownership
+* Validate root permissions
+* Prevent path traversal
+* Prevent symlink escapes
+* Sanitize all user input
+* Log security-sensitive operations

@@ -1,236 +1,475 @@
 # GitRadar Database Schema
 
-## Overview
-
-GitRadar uses SQLite as its local storage engine. The database stores repository metadata, indexed Git history, working tree summaries, and computed analytics.
-
-The schema is designed to support:
-- fast local reads
-- incremental indexing
-- analytics caching
-- safe startup recovery
+Version: 2.0
 
 ---
 
-## Design Principles
+# Database Principles
 
-- Keep raw repository identity separate from computed analytics
-- Store stable Git facts once
-- Store derived metrics in dedicated tables
-- Allow re-computation of analytics without losing source data
-- Use timestamps for refresh and staleness tracking
+Goals:
 
----
-
-## Core Tables
-
-## `tracked_roots`
-Stores user-approved top-level folders that GitRadar is allowed to scan.
-
-Columns:
-- `id` INTEGER PRIMARY KEY
-- `path` TEXT NOT NULL UNIQUE
-- `is_enabled` INTEGER NOT NULL DEFAULT 1
-- `created_at` TEXT NOT NULL
-- `updated_at` TEXT NOT NULL
+* Fast startup
+* Fast dashboard loading
+* Incremental indexing
+* Commit graph support
+* Secure local storage
+* Analytics caching
+* Future extensibility
 
 ---
 
-## `tracked_repositories`
-Stores discovered Git repositories under tracked roots.
+# Core Tables
 
-Columns:
-- `id` INTEGER PRIMARY KEY
-- `root_id` INTEGER NOT NULL
-- `name` TEXT NOT NULL
-- `path` TEXT NOT NULL UNIQUE
-- `git_dir_path` TEXT NOT NULL
-- `default_branch` TEXT
-- `head_branch` TEXT
-- `last_scanned_at` TEXT
-- `last_indexed_commit_hash` TEXT
-- `is_enabled` INTEGER NOT NULL DEFAULT 1
-- `created_at` TEXT NOT NULL
-- `updated_at` TEXT NOT NULL
+## tracked_roots
 
-Foreign keys:
-- `root_id` -> `tracked_roots.id`
+Stores user-approved root directories.
+
+```sql
+tracked_roots
+```
+
+| Column     | Type        |
+| ---------- | ----------- |
+| id         | INTEGER PK  |
+| name       | TEXT        |
+| path       | TEXT UNIQUE |
+| is_enabled | BOOLEAN     |
+| created_at | DATETIME    |
+| updated_at | DATETIME    |
+
+---
+
+## tracked_repositories
+
+Stores discovered repositories.
+
+| Column                   | Type        |
+| ------------------------ | ----------- |
+| id                       | INTEGER PK  |
+| root_id                  | INTEGER FK  |
+| name                     | TEXT        |
+| path                     | TEXT UNIQUE |
+| git_dir_path             | TEXT        |
+| default_branch           | TEXT        |
+| head_branch              | TEXT        |
+| repository_size_bytes    | INTEGER     |
+| last_activity_at         | DATETIME    |
+| last_scanned_at          | DATETIME    |
+| last_indexed_commit_hash | TEXT        |
+| is_enabled               | BOOLEAN     |
+| created_at               | DATETIME    |
+| updated_at               | DATETIME    |
 
 Indexes:
-- index on `root_id`
-- index on `path`
+
+```sql
+idx_repo_root
+idx_repo_path
+idx_repo_activity
+```
 
 ---
 
-## `branches`
-Stores branches for a repository.
+# Branch Tables
 
-Columns:
-- `id` INTEGER PRIMARY KEY
-- `repo_id` INTEGER NOT NULL
-- `name` TEXT NOT NULL
-- `is_head` INTEGER NOT NULL DEFAULT 0
-- `last_commit_hash` TEXT
-- `last_commit_at` TEXT
-- `created_at` TEXT NOT NULL
-- `updated_at` TEXT NOT NULL
+## branches
 
-Foreign keys:
-- `repo_id` -> `tracked_repositories.id`
+| Column           | Type       |
+| ---------------- | ---------- |
+| id               | INTEGER PK |
+| repo_id          | INTEGER FK |
+| name             | TEXT       |
+| is_head          | BOOLEAN    |
+| is_remote        | BOOLEAN    |
+| upstream_branch  | TEXT       |
+| last_commit_hash | TEXT       |
+| last_commit_at   | DATETIME   |
+
+---
+
+# Commit Tables
+
+## commits
+
+| Column          | Type       |
+| --------------- | ---------- |
+| id              | INTEGER PK |
+| repo_id         | INTEGER FK |
+| hash            | TEXT       |
+| author_name     | TEXT       |
+| author_email    | TEXT       |
+| committer_name  | TEXT       |
+| committer_email | TEXT       |
+| message_subject | TEXT       |
+| message_body    | TEXT       |
+| committed_at    | DATETIME   |
+| inserted_at     | DATETIME   |
+
+Constraint:
+
+```sql
+UNIQUE(repo_id, hash)
+```
+
+---
+
+## commit_parents
+
+Required for commit graph rendering.
+
+| Column      | Type       |
+| ----------- | ---------- |
+| id          | INTEGER PK |
+| repo_id     | INTEGER FK |
+| commit_hash | TEXT       |
+| parent_hash | TEXT       |
+
+Example:
+
+```text
+A
+|
+B
+|
+C
+```
+
+Merge:
+
+```text
+A
+|\
+B C
+ \|
+  D
+```
+
+This table enables graph generation.
+
+---
+
+## commit_branches
+
+Maps commits to visible branches.
+
+| Column      | Type       |
+| ----------- | ---------- |
+| id          | INTEGER PK |
+| repo_id     | INTEGER FK |
+| commit_hash | TEXT       |
+| branch_name | TEXT       |
+
+---
+
+# File Explorer Tables
+
+## repository_files
+
+Stores indexed file metadata.
+
+| Column           | Type       |
+| ---------------- | ---------- |
+| id               | INTEGER PK |
+| repo_id          | INTEGER FK |
+| file_path        | TEXT       |
+| file_name        | TEXT       |
+| extension        | TEXT       |
+| size_bytes       | INTEGER    |
+| is_binary        | BOOLEAN    |
+| last_modified_at | DATETIME   |
 
 Indexes:
-- composite index on `(repo_id, name)`
+
+```sql
+idx_repo_file_path
+idx_repo_extension
+```
 
 ---
 
-## `commits`
-Stores commit metadata.
+## file_content_cache
 
-Columns:
-- `id` INTEGER PRIMARY KEY
-- `repo_id` INTEGER NOT NULL
-- `hash` TEXT NOT NULL
-- `author_name` TEXT
-- `author_email` TEXT
-- `committer_name` TEXT
-- `committer_email` TEXT
-- `message_subject` TEXT NOT NULL
-- `message_body` TEXT
-- `parent_count` INTEGER NOT NULL DEFAULT 0
-- `committed_at` TEXT NOT NULL
-- `inserted_at` TEXT NOT NULL
+Optional preview cache.
 
-Foreign keys:
-- `repo_id` -> `tracked_repositories.id`
+Used for:
 
-Constraints:
-- unique `(repo_id, hash)`
+* file previews
+* search
 
-Indexes:
-- index on `(repo_id, committed_at)`
-- index on `(repo_id, author_email)`
+| Column          | Type       |
+| --------------- | ---------- |
+| file_id         | INTEGER PK |
+| preview_content | TEXT       |
+| cached_at       | DATETIME   |
+
+Limit:
+
+First 50KB only.
 
 ---
 
-## `commit_file_stats`
-Stores file-level change summaries for each commit.
+# Diff System
 
-Columns:
-- `id` INTEGER PRIMARY KEY
-- `repo_id` INTEGER NOT NULL
-- `commit_hash` TEXT NOT NULL
-- `file_path` TEXT NOT NULL
-- `change_type` TEXT NOT NULL
-- `additions` INTEGER NOT NULL DEFAULT 0
-- `deletions` INTEGER NOT NULL DEFAULT 0
-- `total_changes` INTEGER NOT NULL DEFAULT 0
+## commit_file_stats
 
-Foreign keys:
-- `repo_id` -> `tracked_repositories.id`
-
-Indexes:
-- index on `(repo_id, file_path)`
-- index on `(repo_id, commit_hash)`
+Existing table retained.
 
 ---
 
-## `working_tree_snapshots`
-Stores summary of current uncommitted state over time.
+## diff_cache
 
-Columns:
-- `id` INTEGER PRIMARY KEY
-- `repo_id` INTEGER NOT NULL
-- `captured_at` TEXT NOT NULL
-- `modified_count` INTEGER NOT NULL DEFAULT 0
-- `staged_count` INTEGER NOT NULL DEFAULT 0
-- `untracked_count` INTEGER NOT NULL DEFAULT 0
-- `deleted_count` INTEGER NOT NULL DEFAULT 0
+Stores generated diffs.
 
-Foreign keys:
-- `repo_id` -> `tracked_repositories.id`
+Improves UI performance.
 
-Indexes:
-- index on `(repo_id, captured_at)`
-
----
-
-## `file_hotspots`
-Stores derived hotspot metrics for files.
-
-Columns:
-- `id` INTEGER PRIMARY KEY
-- `repo_id` INTEGER NOT NULL
-- `file_path` TEXT NOT NULL
-- `touch_count` INTEGER NOT NULL DEFAULT 0
-- `churn_score` REAL NOT NULL DEFAULT 0
-- `last_touched_at` TEXT
-- `updated_at` TEXT NOT NULL
-
-Foreign keys:
-- `repo_id` -> `tracked_repositories.id`
-
-Constraints:
-- unique `(repo_id, file_path)`
-
-Indexes:
-- index on `(repo_id, churn_score DESC)`
-
----
-
-## `repo_health_metrics`
-Stores derived repository-level health indicators.
-
-Columns:
-- `id` INTEGER PRIMARY KEY
-- `repo_id` INTEGER NOT NULL
-- `stale_branch_count` INTEGER NOT NULL DEFAULT 0
-- `hotspot_file_count` INTEGER NOT NULL DEFAULT 0
-- `large_commit_count` INTEGER NOT NULL DEFAULT 0
-- `avg_commit_size` REAL NOT NULL DEFAULT 0
-- `health_score` REAL NOT NULL DEFAULT 0
-- `computed_at` TEXT NOT NULL
-
-Foreign keys:
-- `repo_id` -> `tracked_repositories.id`
-
-Constraints:
-- unique `repo_id`
-
----
-
-## `settings`
-Stores app-level configuration.
-
-Columns:
-- `key` TEXT PRIMARY KEY
-- `value` TEXT NOT NULL
-- `updated_at` TEXT NOT NULL
+| Column       | Type       |
+| ------------ | ---------- |
+| id           | INTEGER PK |
+| repo_id      | INTEGER FK |
+| diff_key     | TEXT       |
+| diff_type    | TEXT       |
+| generated_at | DATETIME   |
+| content      | TEXT       |
 
 Examples:
-- `theme`
-- `scan_interval_seconds`
-- `watcher_enabled`
-- `analytics_refresh_mode`
+
+commit_a:commit_b
+
+branch_a:branch_b
+
+working_tree
 
 ---
 
-## Suggested Migration Order
+# Working Tree
 
-1. `tracked_roots`
-2. `tracked_repositories`
-3. `branches`
-4. `commits`
-5. `commit_file_stats`
-6. `working_tree_snapshots`
-7. `file_hotspots`
-8. `repo_health_metrics`
-9. `settings`
+## working_tree_snapshots
+
+Existing table retained.
 
 ---
 
-## Notes
+## working_tree_files
 
-- Timestamps should be stored in ISO 8601 UTC strings
-- SQLite foreign keys should be explicitly enabled
-- Derived tables can be recomputed if analytics logic changes
-- Commit file stats should store summary data only for MVP, not full patches
+Tracks file-level working state.
+
+| Column    | Type       |
+| --------- | ---------- |
+| id        | INTEGER PK |
+| repo_id   | INTEGER FK |
+| file_path | TEXT       |
+| status    | TEXT       |
+
+Values:
+
+```text
+MODIFIED
+STAGED
+UNTRACKED
+DELETED
+```
+
+---
+
+# Analytics Tables
+
+## file_hotspots
+
+Existing table retained.
+
+---
+
+## repo_health_metrics
+
+Existing table retained.
+
+---
+
+## contributor_metrics
+
+Precomputed contributor analytics.
+
+| Column       | Type       |
+| ------------ | ---------- |
+| id           | INTEGER PK |
+| repo_id      | INTEGER FK |
+| author_email | TEXT       |
+| commit_count | INTEGER    |
+| churn        | INTEGER    |
+| active_days  | INTEGER    |
+| updated_at   | DATETIME   |
+
+---
+
+# Search Tables
+
+## search_index
+
+Local search acceleration.
+
+| Column          | Type       |
+| --------------- | ---------- |
+| id              | INTEGER PK |
+| repo_id         | INTEGER FK |
+| entity_type     | TEXT       |
+| entity_id       | TEXT       |
+| searchable_text | TEXT       |
+
+Entity types:
+
+```text
+REPOSITORY
+FILE
+COMMIT
+BRANCH
+```
+
+---
+
+# Indexing Engine Tables
+
+## indexing_jobs
+
+Tracks indexing work.
+
+| Column        | Type       |
+| ------------- | ---------- |
+| id            | INTEGER PK |
+| repo_id       | INTEGER FK |
+| job_type      | TEXT       |
+| status        | TEXT       |
+| started_at    | DATETIME   |
+| completed_at  | DATETIME   |
+| error_message | TEXT       |
+
+Statuses:
+
+```text
+PENDING
+RUNNING
+FAILED
+COMPLETED
+```
+
+---
+
+# Security Tables
+
+## audit_logs
+
+Critical security table.
+
+| Column      | Type       |
+| ----------- | ---------- |
+| id          | INTEGER PK |
+| action      | TEXT       |
+| entity_type | TEXT       |
+| entity_id   | TEXT       |
+| details     | TEXT       |
+| created_at  | DATETIME   |
+
+Examples:
+
+ROOT_ADDED
+
+ROOT_REMOVED
+
+SETTINGS_UPDATED
+
+FUTURE_GIT_PULL
+
+---
+
+# Settings
+
+## settings
+
+Existing table retained.
+
+---
+
+# Future WakaTime Support
+
+## wakatime_projects
+
+| Column                | Type       |
+| --------------------- | ---------- |
+| id                    | INTEGER PK |
+| repo_id               | INTEGER FK |
+| wakatime_project_name | TEXT       |
+| last_synced_at        | DATETIME   |
+
+---
+
+## wakatime_daily_stats
+
+| Column              | Type       |
+| ------------------- | ---------- |
+| id                  | INTEGER PK |
+| wakatime_project_id | INTEGER FK |
+| date                | DATE       |
+| coding_seconds      | INTEGER    |
+
+---
+
+# Recommended SQLite Optimizations
+
+Enable:
+
+```sql
+PRAGMA foreign_keys = ON;
+
+PRAGMA journal_mode = WAL;
+
+PRAGMA synchronous = NORMAL;
+
+PRAGMA temp_store = MEMORY;
+
+PRAGMA cache_size = -20000;
+```
+
+---
+
+# Migration Order
+
+1. tracked_roots
+2. tracked_repositories
+3. branches
+4. commits
+5. commit_parents
+6. commit_branches
+7. repository_files
+8. file_content_cache
+9. commit_file_stats
+10. diff_cache
+11. working_tree_snapshots
+12. working_tree_files
+13. file_hotspots
+14. contributor_metrics
+15. repo_health_metrics
+16. search_index
+17. indexing_jobs
+18. audit_logs
+19. settings
+20. wakatime_projects
+21. wakatime_daily_stats
+
+---
+
+# Important Design Decision
+
+Repository file contents are NOT fully stored in SQLite.
+
+Only:
+
+* Metadata
+* Search previews
+* Cached snippets
+
+This prevents:
+
+* Database bloat
+* Privacy risks
+* Slow indexing
+
+Actual file content should always be read directly from disk when opened.

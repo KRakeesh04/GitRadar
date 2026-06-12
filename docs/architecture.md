@@ -1,192 +1,475 @@
 # GitRadar Architecture
 
-## Overview
-
-GitRadar is a Linux-first desktop application for discovering, tracking, and analyzing local Git repositories. It provides GitHub-style insights for repositories stored on the user's machine, while keeping all data local.
-
-The system is built with:
-
-- **Frontend:** React + TypeScript + TanStack + Vite
-- **Desktop shell / backend bridge:** Tauri
-- **Core backend:** Rust
-- **Storage:** SQLite
+Version: 2.0
 
 ---
 
-## High-Level Architecture
+# Overview
 
-GitRadar is organized into four main layers:
+GitRadar is a Linux-first desktop application designed to discover, index, analyze, and visualize local Git repositories while maintaining strict local-first security principles.
 
-1. **Presentation Layer**
-   - React UI
-   - Route-based pages
-   - Charts and analytics views
-   - Search, filtering, and navigation
+The architecture prioritizes:
 
-2. **Application Layer**
-   - Tauri commands
-   - Frontend-backend communication
-   - Query orchestration
-   - State coordination
-
-3. **Core Domain Layer**
-   - Git repository discovery
-   - Git history parsing
-   - File status inspection
-   - Analytics computation
-   - Watcher scheduling
-
-4. **Persistence Layer**
-   - SQLite storage
-   - Repository metadata
-   - Commit/file statistics
-   - Cached analytics
-   - App settings
+* Fast startup
+* Low latency UI
+* Incremental indexing
+* Secure filesystem access
+* Local-only processing
+* Future extensibility
 
 ---
 
-## Main Components
+# Technology Stack
 
-### Frontend
-Responsible for:
-- Rendering dashboards
-- Showing repository and file insights
-- Navigating between pages
-- Triggering backend commands
-- Presenting analytics graphs
+## Frontend
 
-Key frontend modules:
-- `app/router`
-- `features/dashboard`
-- `features/repositories`
-- `features/repository-details`
-- `features/commits`
-- `features/files`
-- `features/analytics`
-- `features/settings`
+* React
+* TypeScript
+* TanStack Query
+* React Router
+* Zustand
 
-### Tauri Command Layer
-Acts as the interface between UI and Rust backend logic.
+---
+
+## Desktop Layer
+
+* Tauri
 
 Responsibilities:
-- Expose callable commands to the frontend
-- Validate input
-- Return serialized results
-- Map errors into UI-safe responses
 
-Example command groups:
-- `repos`
-- `commits`
-- `files`
-- `analytics`
-- `settings`
-
-### Core Services
-Implements the main business logic.
-
-Core responsibilities:
-- Discover repositories under approved directories
-- Read Git metadata and current working tree state
-- Schedule indexing jobs
-- Handle filesystem change events
-- Compute hotspot and churn metrics
-
-Important services:
-- `repo_discovery`
-- `git_service`
-- `diff_service`
-- `watcher`
-- `scheduler`
-- `permissions`
-
-### Database Layer
-Stores local indexed state so the app does not need to fully rescan every time.
-
-Stores:
-- tracked roots
-- tracked repositories
-- branches
-- commits
-- file-level change summaries
-- working tree snapshots
-- computed analytics
-- user settings
+* Native window
+* File dialogs
+* OS integration
+* Secure IPC bridge
 
 ---
 
-## Data Flow
+## Backend
 
-## 1. Repository Discovery
-1. User selects a root directory
-2. Backend recursively scans allowed paths
-3. Directories containing `.git` are identified
-4. Repositories are registered in the database
-5. Initial indexing jobs are created
+* Rust
 
-## 2. Initial Indexing
-1. Git history is read for a repository
-2. Commit metadata is extracted
-3. File-level diff stats are computed
-4. Aggregated analytics are generated
-5. Results are saved into SQLite
+Responsibilities:
 
-## 3. Incremental Updates
-1. Filesystem watcher detects repo-related changes
-2. Scheduler debounces repeated events
-3. Only affected repositories are refreshed
-4. Only new commits or changed working tree state are re-indexed
-5. Analytics are partially recomputed
-
-## 4. UI Rendering
-1. Frontend queries backend through Tauri commands
-2. Data is cached with TanStack Query
-3. Charts and repository views are rendered
-4. User can filter, search, and inspect analytics
+* Repository discovery
+* Git indexing
+* Analytics
+* Sync scheduling
+* Security enforcement
 
 ---
 
-## Architectural Principles
+## Storage
 
-### Local-first
-All analytics and indexing happen locally. No external service is required.
+* SQLite
 
-### Incremental over full rescans
-GitRadar should avoid recomputing everything whenever possible.
+Modes:
 
-### Feature isolation
-Frontend and backend modules should be grouped by responsibility.
-
-### Read-heavy optimization
-The app will read analytics often, so cached summaries and indexed data should be designed for fast retrieval.
-
-### Safe filesystem interaction
-The app should handle:
-- missing folders
-- permission errors
-- symlinks
-- deleted repositories
-- invalid Git directories
+* WAL Enabled
+* Foreign Keys Enabled
+* Prepared Statements Only
 
 ---
 
-## Non-Goals for MVP
+# High-Level Architecture
 
-The first version will not focus on:
-- remote Git hosting integration
-- cloud sync
-- multi-device support
-- patch-level diff rendering for every commit
-- advanced merge conflict visualization
+```text
++--------------------------------------------------+
+|                    React UI                      |
++--------------------------------------------------+
+                      |
+                      |
+                      v
++--------------------------------------------------+
+|                Tauri Command Layer               |
++--------------------------------------------------+
+                      |
+                      |
+                      v
++--------------------------------------------------+
+|               Application Services               |
++--------------------------------------------------+
+| Repository Service                               |
+| Commit Service                                   |
+| Diff Service                                     |
+| Analytics Service                                |
+| Search Service                                   |
+| Settings Service                                 |
++--------------------------------------------------+
+                      |
+                      |
+                      v
++--------------------------------------------------+
+|                  Indexing Engine                 |
++--------------------------------------------------+
+| Discovery Engine                                 |
+| Incremental Indexer                              |
+| Sync Scheduler                                   |
+| Working Tree Scanner                             |
++--------------------------------------------------+
+                      |
+                      |
+                      v
++--------------------------------------------------+
+|                 Security Layer                   |
++--------------------------------------------------+
+| Path Validation                                  |
+| Permission Validation                            |
+| Git Command Sandbox                              |
+| Audit Logger                                     |
++--------------------------------------------------+
+                      |
+                      |
+                      v
++--------------------------------------------------+
+|                    SQLite                        |
++--------------------------------------------------+
+```
 
 ---
 
-## Future Extensions
+# Core Architectural Principles
 
-Possible future additions:
-- branch comparison analytics
-- export reports as JSON/CSV/PDF
-- system tray integration
-- background daemon mode
-- plugin architecture
-- support for submodule insights
-- commit graph visualization
+## Local First
+
+Everything operates locally.
+
+No internet access is required.
+
+No repository data leaves the machine.
+
+---
+
+## Explicit Permission Model
+
+Only user-approved root folders may be scanned.
+
+Example:
+
+Allowed:
+
+/home/user/projects
+
+Blocked:
+
+/home/user/Documents
+
+Unless explicitly approved.
+
+---
+
+## Incremental Indexing
+
+Never perform a full repository re-index unless necessary.
+
+Track:
+
+* Last indexed commit
+* Last scan timestamp
+* Changed working tree state
+
+Only update deltas.
+
+---
+
+## Read Optimized
+
+Dashboard loads from cached analytics.
+
+Analytics are precomputed and persisted.
+
+Avoid expensive Git operations during UI rendering.
+
+---
+
+# Component Design
+
+## Repository Discovery Engine
+
+Responsible for:
+
+* Root scanning
+* Git repository detection
+* Repository registration
+
+Workflow:
+
+1. User adds root.
+2. Discovery begins.
+3. Repositories identified.
+4. Database updated.
+
+---
+
+## Incremental Indexer
+
+Responsible for:
+
+* Commit indexing
+* Branch indexing
+* Analytics refresh
+
+Algorithm:
+
+```text
+HEAD changed?
+    |
+    +-- No --> Skip
+    |
+    +-- Yes --> Index new commits only
+```
+
+---
+
+## Working Tree Scanner
+
+Responsible for:
+
+* Modified files
+* Staged files
+* Deleted files
+* Untracked files
+
+Runs in background only while application is open.
+
+---
+
+## Sync Scheduler
+
+Responsible for:
+
+* Background refresh
+* Debouncing filesystem events
+* Queueing indexing jobs
+
+Rules:
+
+* Runs only when app is running
+* Stops completely when app closes
+
+No daemon mode in MVP.
+
+---
+
+# Security Layer
+
+## Path Validator
+
+Validates every filesystem request.
+
+Rules:
+
+* Must be inside approved root
+* Must not escape root via symlink
+* Must not access restricted paths
+
+---
+
+## Git Sandbox
+
+All Git commands execute through a controlled abstraction.
+
+Allowed:
+
+* status
+* log
+* diff
+* branch
+
+Future:
+
+* pull
+* push
+* fetch
+* merge
+
+Blocked:
+
+* arbitrary shell commands
+
+---
+
+## Audit Logger
+
+Records:
+
+* Root added
+* Root removed
+* Settings changes
+* Future Git operations
+
+---
+
+# Caching Strategy
+
+## UI Cache
+
+TanStack Query
+
+Purpose:
+
+* Prevent repetitive requests
+* Instant page transitions
+
+---
+
+## Database Cache
+
+Precomputed:
+
+* Repository metrics
+* Health score
+* Hotspots
+
+Stored in SQLite.
+
+---
+
+# Repository Detail Architecture
+
+Repository page contains:
+
+```text
+Repository Details
+│
+├── Overview
+│
+├── Commit Graph
+│
+├── Branches
+│
+├── Contributors
+│
+├── File Explorer
+│
+├── Working Tree
+│
+├── Diffs
+│
+└── Analytics
+```
+
+---
+
+# Commit Graph System
+
+The commit graph must visualize:
+
+* Parent relationships
+* Branches
+* Merge commits
+* Branch divergence
+
+Data source:
+
+git log --graph equivalent data
+
+Stored as:
+
+Commit Node
+Parent Hashes
+Branch References
+
+---
+
+# File Explorer System
+
+Supports:
+
+* Repository tree navigation
+* File preview
+* File metadata
+
+Supported:
+
+✓ Text files
+
+Future:
+
+✓ Markdown preview
+
+✓ Code syntax highlighting
+
+---
+
+# Diff Viewer
+
+Supports:
+
+## Working Tree Diff
+
+Current changes.
+
+## Commit Diff
+
+Commit A → Commit B
+
+## Branch Diff
+
+Branch A → Branch B
+
+Modes:
+
+* Unified
+* Side-by-side
+
+---
+
+# Future WakaTime Integration
+
+New Service:
+
+WakaTime Adapter
+
+Responsibilities:
+
+* Read WakaTime API
+* Cache durations
+* Map activity to repositories
+
+Will not affect existing architecture.
+
+---
+
+# Future Git Operations Module
+
+New Module:
+
+Git Operations Service
+
+Responsibilities:
+
+* Pull
+* Push
+* Fetch
+* Merge
+
+Must use Git Sandbox.
+
+Never allow arbitrary shell execution.
+
+---
+
+# Deployment Architecture
+
+```text
+User
+ |
+ v
+GitRadar Desktop App
+ |
+ +-- React UI
+ |
+ +-- Tauri
+ |
+ +-- Rust Backend
+ |
+ +-- SQLite Database
+ |
+ +-- Local Git Repositories
+```
+
+No cloud services.
+
+No external dependencies.
+
+No always-running background processes.
