@@ -43,16 +43,23 @@ pub fn get_latest_snapshot(
          ORDER BY created_at DESC LIMIT 1",
     )?;
 
-    let snapshot = stmt.query_map([&repo_id as &dyn rusqlite::ToSql, &snapshot_type as &dyn rusqlite::ToSql, &snapshot_key as &dyn rusqlite::ToSql], |row| {
-        Ok(Snapshot {
-            id: row.get(0)?,
-            repo_id: row.get(1)?,
-            snapshot_type: row.get(2)?,
-            snapshot_key: row.get(3)?,
-            data_json: row.get(4)?,
-            created_at: row.get(5)?,
-        })
-    })?;
+    let snapshot = stmt.query_map(
+        [
+            &repo_id as &dyn rusqlite::ToSql,
+            &snapshot_type as &dyn rusqlite::ToSql,
+            &snapshot_key as &dyn rusqlite::ToSql,
+        ],
+        |row| {
+            Ok(Snapshot {
+                id: row.get(0)?,
+                repo_id: row.get(1)?,
+                snapshot_type: row.get(2)?,
+                snapshot_key: row.get(3)?,
+                data_json: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        },
+    )?;
 
     let result: Vec<Snapshot> = snapshot.filter_map(Result::ok).collect();
     Ok(result.into_iter().next())

@@ -1,13 +1,13 @@
-pub mod repository;
+pub mod analytics;
+pub mod branch;
 pub mod commit;
 pub mod commit_parent;
-pub mod file_change;
-pub mod working_tree;
 pub mod contributor;
-pub mod analytics;
-pub mod snapshot;
+pub mod file_change;
+pub mod repository;
 pub mod setting;
-pub mod branch;
+pub mod snapshot;
+pub mod working_tree;
 
-pub use repository::Repository;
 pub use analytics::{RepoActivityDaily, RepoSummary};
+pub use repository::Repository;

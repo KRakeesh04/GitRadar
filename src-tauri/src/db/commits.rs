@@ -1,5 +1,5 @@
 use crate::models::commit::Commit;
-use rusqlite::{Connection, Result, params};
+use rusqlite::{params, Connection, Result};
 
 pub fn insert_commit(
     conn: &Connection,

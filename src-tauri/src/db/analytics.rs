@@ -61,18 +61,23 @@ pub fn get_repo_activity_daily(
     let mut stmt = conn.prepare(&sql)?;
 
     let activities = stmt.query_map(
-        params.iter().map(|p| p.as_ref()).collect::<Vec<&dyn rusqlite::ToSql>>().as_slice(),
+        params
+            .iter()
+            .map(|p| p.as_ref())
+            .collect::<Vec<&dyn rusqlite::ToSql>>()
+            .as_slice(),
         |row| {
-        Ok(RepoActivityDaily {
-            id: row.get(0)?,
-            repo_id: row.get(1)?,
-            activity_date: row.get(2)?,
-            commit_count: row.get(3)?,
-            additions: row.get(4)?,
-            deletions: row.get(5)?,
-            files_changed: row.get(6)?,
-        })
-    })?;
+            Ok(RepoActivityDaily {
+                id: row.get(0)?,
+                repo_id: row.get(1)?,
+                activity_date: row.get(2)?,
+                commit_count: row.get(3)?,
+                additions: row.get(4)?,
+                deletions: row.get(5)?,
+                files_changed: row.get(6)?,
+            })
+        },
+    )?;
 
     Ok(activities.filter_map(Result::ok).collect())
 }
