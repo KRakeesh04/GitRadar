@@ -2,10 +2,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
-mod core;
-mod db;
-mod models;
 mod state;
+mod infrastructure;
+mod domain;
+mod security;
 
 use state::AppState;
 use std::path::PathBuf;
