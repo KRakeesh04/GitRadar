@@ -1,8 +1,8 @@
-@import "tailwindcss/preflight";
-@import "tailwindcss/utilities";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import 'tailwindcss/preflight';
+@import 'tailwindcss/utilities';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/geist';
 
 @layer base {
   :root {
@@ -122,7 +122,11 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Geist Variable', system-ui, -apple-system, sans-serif;
+    font-family:
+      'Geist Variable',
+      system-ui,
+      -apple-system,
+      sans-serif;
   }
 }
 

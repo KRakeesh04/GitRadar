@@ -89,7 +89,7 @@ export const RepositoryList: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {repositories.map((repo) => (
+          {repositories.map(repo => (
             <div
               key={repo.id}
               className="rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow"
@@ -100,14 +100,15 @@ export const RepositoryList: React.FC = () => {
                     <h3 className="text-lg font-semibold leading-none tracking-tight mb-2">
                       {repo.name}
                     </h3>
-                    <p className="text-sm text-muted-foreground mb-3 font-mono">
-                      {repo.path}
-                    </p>
+                    <p className="text-sm text-muted-foreground mb-3 font-mono">{repo.path}</p>
                     <div className="flex items-center gap-4 text-sm">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${repo.is_dirty
-                          ? 'bg-destructive/20 text-destructive'
-                          : 'bg-success/20 text-success'
-                        }`}>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          repo.is_dirty
+                            ? 'bg-destructive/20 text-destructive'
+                            : 'bg-success/20 text-success'
+                        }`}
+                      >
                         {repo.is_dirty ? 'Dirty' : 'Clean'}
                       </span>
                       {repo.last_commit_hash && (
@@ -121,9 +122,7 @@ export const RepositoryList: React.FC = () => {
                     <div className="font-medium">
                       Updated: {new Date(repo.updated_at).toLocaleDateString()}
                     </div>
-                    {repo.index_status && (
-                      <div className="mt-1">Status: {repo.index_status}</div>
-                    )}
+                    {repo.index_status && <div className="mt-1">Status: {repo.index_status}</div>}
                   </div>
                 </div>
               </div>

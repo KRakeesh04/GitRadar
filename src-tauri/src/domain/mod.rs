@@ -11,10 +11,10 @@ pub use contributor::Contributor;
 pub use repository::Repository;
 pub use value_objects::{ActivityLevel, HealthScore, RepositoryId};
 
-/// Result type for domain operations
+// Result type for domain operations
 pub type DomainResult<T> = Result<T, DomainError>;
 
-/// Domain-level errors
+// Domain-level errors
 #[derive(Debug)]
 pub enum DomainError {
     InvalidRepository(String),
