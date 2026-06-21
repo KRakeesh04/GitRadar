@@ -1,7 +1,7 @@
 pub mod branch;
 pub mod commit;
+pub mod file;
 pub mod graph;
-pub mod log;
 pub mod repo;
 pub mod status;
 
@@ -67,8 +67,42 @@ pub struct WorkingTreeStatus {
 pub struct GraphNode {
     pub hash: String,
     pub message: String,
-    pub author_name: String,
-    pub author_email: String,
+    pub author_name: Option<String>,
+    pub author_email: Option<String>,
     pub committed_at: i64,
     pub parent_hashes: Vec<String>,
+}
+
+pub struct FileHotspotPerCommit {
+    pub file_path: String,
+    pub addions: i32,
+    pub deletions: i32,
+    pub change_type: ChangeType,
+}
+
+#[derive(Debug, Clone)]
+pub enum ChangeType {
+    Added,
+    Modified,
+    Deleted,
+    Renamed,
+}
+
+impl ChangeType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ChangeType::Added => "Added",
+            ChangeType::Modified => "Modified",
+            ChangeType::Deleted => "Deleted",
+            ChangeType::Renamed => "Renamed",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FilePatch {
+    pub file_path: String,
+    pub old_path: Option<String>,
+    pub change_type: ChangeType,
+    pub patch: String,
 }

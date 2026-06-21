@@ -38,9 +38,14 @@ pub fn get_graph_nodes(
 
         nodes.push(GraphNode {
             hash: commit.id().to_string(),
-            message: commit.summary().unwrap_or("").to_string(),
-            author_name: commit.author().name().unwrap_or("").to_string(),
-            author_email: commit.author().email().unwrap_or("").to_string(),
+            message: commit
+                .summary()
+                .ok()
+                .flatten()
+                .unwrap_or_default()
+                .to_string(),
+            author_name: commit.author().name().ok().map(|s| s.to_string()),
+            author_email: commit.author().email().ok().map(|s| s.to_string()),
             committed_at: commit.time().seconds(),
             parent_hashes: commit
                 .parent_ids()
