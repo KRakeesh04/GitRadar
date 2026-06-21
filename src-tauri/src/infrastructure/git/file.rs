@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::infrastructure::git::{ChangeType, FilePatch};
+use crate::infrastructure::git::{change_type, FilePatch};
 
 pub fn get_file_patch(
     repo_path: &str,
@@ -83,14 +83,4 @@ fn delta_key(delta: &git2::DiffDelta<'_>) -> String {
         delta_path(&delta.old_file()).unwrap_or_default(),
         delta_path(&delta.new_file()).unwrap_or_default()
     )
-}
-
-fn change_type(status: git2::Delta) -> ChangeType {
-    match status {
-        git2::Delta::Added => ChangeType::Added,
-        git2::Delta::Deleted => ChangeType::Deleted,
-        git2::Delta::Renamed | git2::Delta::Copied => ChangeType::Renamed,
-        git2::Delta::Modified | git2::Delta::Typechange => ChangeType::Modified,
-        _ => ChangeType::Modified,
-    }
 }

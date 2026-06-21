@@ -7,6 +7,9 @@ pub mod status;
 
 use std::path::PathBuf;
 
+use serde::Serialize;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DiscoveredRepository {
     pub name: String,
     pub path: PathBuf,
@@ -14,11 +17,13 @@ pub struct DiscoveredRepository {
     pub repo_type: RepositoryType,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct RepositoryInfo {
     pub remote_url: Option<String>,
     pub default_branch: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum RepositoryType {
     Standard,
     Submodule,
@@ -35,6 +40,7 @@ impl RepositoryType {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct NewCommit {
     pub hash: String,
     pub author_name: Option<String>,
@@ -47,16 +53,19 @@ pub struct NewCommit {
     pub committed_at: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct NewBranch {
     pub name: String,
     pub is_head: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct LastCommit {
     pub hash: String,
     pub committed_at: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct WorkingTreeStatus {
     pub added: Vec<String>,
     pub modified: Vec<String>,
@@ -64,6 +73,7 @@ pub struct WorkingTreeStatus {
     pub renamed: Vec<(String, String)>, // (old_path, new_path)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct GraphNode {
     pub hash: String,
     pub message: String,
@@ -73,6 +83,7 @@ pub struct GraphNode {
     pub parent_hashes: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct FileHotspotPerCommit {
     pub file_path: String,
     pub addions: i32,
@@ -80,7 +91,7 @@ pub struct FileHotspotPerCommit {
     pub change_type: ChangeType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum ChangeType {
     Added,
     Modified,
@@ -99,7 +110,17 @@ impl ChangeType {
     }
 }
 
-#[derive(Debug, Clone)]
+pub fn change_type(status: git2::Delta) -> ChangeType {
+    match status {
+        git2::Delta::Added => ChangeType::Added,
+        git2::Delta::Deleted => ChangeType::Deleted,
+        git2::Delta::Renamed | git2::Delta::Copied => ChangeType::Renamed,
+        git2::Delta::Modified | git2::Delta::Typechange => ChangeType::Modified,
+        _ => ChangeType::Modified,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct FilePatch {
     pub file_path: String,
     pub old_path: Option<String>,

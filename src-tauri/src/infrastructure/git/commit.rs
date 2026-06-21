@@ -1,4 +1,6 @@
-use crate::infrastructure::git::{LastCommit, NewCommit};
+use std::collections::HashMap;
+
+use crate::infrastructure::git::{change_type, FileHotspotPerCommit, LastCommit, NewCommit};
 
 pub fn head_commit_hash(repo_path: &str) -> Result<String, String> {
     // Validate repository path exists
@@ -194,4 +196,100 @@ pub fn find_ahead_behind_head_vs_default(
         };
 
     Ok((ahead, behind))
+}
+
+pub fn get_file_hotspot_per_commit_hash(
+    repo_path: &str,
+    commit_hash: &str,
+) -> Result<Vec<FileHotspotPerCommit>, String> {
+    if !std::path::Path::new(repo_path).exists() {
+        return Err(format!("Repository path '{}' does not exist", repo_path));
+    }
+
+    let repo = match git2::Repository::open(repo_path) {
+        Ok(repo) => repo,
+        Err(e) => return Err(format!("Failed to open repository: {}", e)),
+    };
+
+    let oid = match git2::Oid::from_str(commit_hash) {
+        Ok(oid) => oid,
+        Err(e) => return Err(format!("Invalid commit hash '{}': {}", commit_hash, e)),
+    };
+
+    let commit = match repo.find_commit(oid) {
+        Ok(commit) => commit,
+        Err(e) => return Err(format!("Failed to find commit '{}': {}", commit_hash, e)),
+    };
+
+    let commit_tree = commit
+        .tree()
+        .map_err(|error| format!("Failed to read commit tree: {error}"))?;
+    let parent_tree = if commit.parent_count() == 0 {
+        None
+    } else {
+        Some(
+            commit
+                .parent(0)
+                .and_then(|parent| parent.tree())
+                .map_err(|error| format!("Failed to read parent tree: {error}"))?,
+        )
+    };
+    let mut diff = repo
+        .diff_tree_to_tree(parent_tree.as_ref(), Some(&commit_tree), None)
+        .map_err(|error| format!("Failed to get commit diff: {error}"))?;
+    diff.find_similar(None)
+        .map_err(|error| format!("Failed to detect renamed files: {error}"))?;
+
+    let mut file_hotspots = Vec::with_capacity(diff.deltas().len());
+    let mut hotspot_indices = HashMap::new();
+
+    for delta in diff.deltas() {
+        let file_path = delta
+            .new_file()
+            .path()
+            .or(delta.old_file().path())
+            .map(|path| path.to_string_lossy().into_owned());
+        let Some(file_path) = file_path else {
+            continue;
+        };
+
+        hotspot_indices.insert(delta_key(&delta), file_hotspots.len());
+        file_hotspots.push(FileHotspotPerCommit {
+            file_path,
+            addions: 0,
+            deletions: 0,
+            change_type: change_type(delta.status()),
+        });
+    }
+
+    diff.print(git2::DiffFormat::Patch, |delta, _hunk, line| {
+        if let Some(&index) = hotspot_indices.get(&delta_key(&delta)) {
+            match line.origin() {
+                '+' => file_hotspots[index].addions += 1,
+                '-' => file_hotspots[index].deletions += 1,
+                _ => {}
+            }
+        }
+        true
+    })
+    .map_err(|error| format!("Failed to calculate line changes: {error}"))?;
+
+    Ok(file_hotspots)
+}
+
+fn delta_key(delta: &git2::DiffDelta<'_>) -> String {
+    format!(
+        "{:?}\0{}\0{}",
+        delta.status(),
+        delta
+            .old_file()
+            .path()
+            .map(|path| path.to_string_lossy())
+            .unwrap_or_default(),
+        delta
+            .new_file()
+            .path()
+            .map(|path| path.to_string_lossy())
+            .unwrap_or_default(),
+    )
 }
