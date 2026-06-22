@@ -50,11 +50,11 @@ pub fn get_all_tracked_roots(conn: &Connection) -> Result<Vec<TrackedRoot>> {
     Ok(roots.filter_map(Result::ok).collect())
 }
 
-pub fn update_tracked_root_enabled(conn: &Connection, id: i64, is_enabled: bool) -> Result<()> {
+pub fn update_tracked_root_enabled(conn: &Connection, path: &str, is_enabled: bool) -> Result<()> {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "UPDATE tracked_roots SET is_enabled = ?1, updated_at = ?2 WHERE id = ?3",
-        params![is_enabled, now, id],
+        "UPDATE tracked_roots SET is_enabled = ?1, updated_at = ?2 WHERE path = ?3",
+        params![is_enabled, now, path],
     )?;
     Ok(())
 }
