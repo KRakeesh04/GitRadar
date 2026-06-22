@@ -1,7 +1,7 @@
 use crate::infrastructure::database::models::Repository;
 use rusqlite::{params, Connection, Result};
 
-pub fn insert_repository(
+pub fn upsert_repository(
     conn: &Connection,
     root_id: i64,
     name: &str,
@@ -9,7 +9,9 @@ pub fn insert_repository(
     git_dir_path: &str,
     repo_type: &str,
     remote_url: Option<&str>,
-) -> Result<i64> {
+    default_branch: Option<&str>,
+    head_branch: Option<&str>,
+) -> Result<()> {
     let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
@@ -21,10 +23,26 @@ pub fn insert_repository(
             git_dir_path,
             repo_type,
             remote_url,
+            default_branch,
+            head_branch,
             created_at,
             updated_at
         )
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+        VALUES (
+            ?1, ?2, ?3, ?4, ?5,
+            ?6, ?7, ?8, ?9, ?10
+        )
+
+        ON CONFLICT(path)
+        DO UPDATE SET
+            root_id = excluded.root_id,
+            name = excluded.name,
+            git_dir_path = excluded.git_dir_path,
+            repo_type = excluded.repo_type,
+            remote_url = excluded.remote_url,
+            default_branch = excluded.default_branch,
+            head_branch = excluded.head_branch,
+            updated_at = excluded.updated_at
         "#,
         params![
             root_id,
@@ -33,12 +51,14 @@ pub fn insert_repository(
             git_dir_path,
             repo_type,
             remote_url,
+            default_branch,
+            head_branch,
             now,
             now
         ],
     )?;
 
-    Ok(conn.last_insert_rowid())
+    Ok(())
 }
 
 pub fn get_repository_by_id(conn: &Connection, id: i64) -> Result<Option<Repository>> {

@@ -27,7 +27,15 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn new(id: i64, name: String, path: PathBuf, git_dir: PathBuf) -> DomainResult<Self> {
+    pub fn new(
+        id: i64,
+        name: String,
+        path: PathBuf,
+        git_dir: PathBuf,
+        remote_url: Option<String>,
+        default_branch: Option<String>,
+        head_branch: Option<String>,
+    ) -> DomainResult<Self> {
         let repo_id =
             RepositoryId::new(id).map_err(|e| super::DomainError::InvalidRepository(e))?;
 
@@ -38,9 +46,9 @@ impl Repository {
             git_dir,
             health_score: HealthScore::new(0.5).unwrap(), // Default: Fair
             activity_level: ActivityLevel::VeryLow,
-            default_branch: None,
-            head_branch: None,
-            remote_url: None,
+            default_branch,
+            head_branch,
+            remote_url,
             is_dirty: false,
             total_commits: CommitCount::new(0),
             unique_contributors: 0,
@@ -243,6 +251,9 @@ mod tests {
             "test-repo".to_string(),
             PathBuf::from("/home/user/repos/test"),
             PathBuf::from("/home/user/repos/test/.git"),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
@@ -258,6 +269,9 @@ mod tests {
             "test-repo".to_string(),
             PathBuf::from("/home/user/repos/test"),
             PathBuf::from("/home/user/repos/test/.git"),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
@@ -272,6 +286,9 @@ mod tests {
             "test-repo".to_string(),
             PathBuf::from("/home/user/repos/test"),
             PathBuf::from("/home/user/repos/test/.git"),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
@@ -288,6 +305,9 @@ mod tests {
             "test-repo".to_string(),
             PathBuf::from("/home/user/repos/test"),
             PathBuf::from("/home/user/repos/test/.git"),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
@@ -301,6 +321,9 @@ mod tests {
             "test-repo".to_string(),
             PathBuf::from("/home/user/repos/test"),
             PathBuf::from("/home/user/repos/test/.git"),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
@@ -319,6 +342,9 @@ mod tests {
             "test-repo".to_string(),
             PathBuf::from("/home/user/repos/test"),
             PathBuf::from("/home/user/repos/test/.git"),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
@@ -335,6 +361,9 @@ mod tests {
             "test-repo".to_string(),
             PathBuf::from("/home/user/repos/test"),
             PathBuf::from("/home/user/repos/test/.git"),
+            None,
+            None,
+            None,
         )
         .unwrap();
 
