@@ -2,13 +2,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
-mod state;
-mod infrastructure;
 mod domain;
+mod infrastructure;
 mod security;
+mod services;
+mod state;
 
 use state::AppState;
-use std::path::PathBuf;
 use tauri::Manager;
 
 fn main() {
@@ -31,7 +31,12 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::repos::get_all_repositories,
+            // commands::get_repositories,
+            // commands::add_repository,
+            // commands::remove_repository,
+            // commands::get_branches,
+            // commands::get_commits,
+            // commands::get_commit_details,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri app");
