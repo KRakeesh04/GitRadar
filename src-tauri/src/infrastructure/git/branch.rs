@@ -85,3 +85,23 @@ pub fn is_remote_branch(repo_path: &str, branch_name: &str) -> Result<bool, Stri
 
     branch_exists
 }
+
+pub fn current_head_branch(repo_path: &str) -> Result<String, String> {
+    if !std::path::Path::new(repo_path).exists() {
+        return Err(format!("Repository path '{}' does not exist", repo_path));
+    }
+
+    let repo = match git2::Repository::open(repo_path) {
+        Ok(repo) => repo,
+        Err(e) => return Err(format!("Failed to open repository: {}", e)),
+    };
+
+    let head = match repo.head() {
+        Ok(head) => head,
+        Err(e) => return Err(format!("Failed to get HEAD reference: {}", e)),
+    };
+
+    let branch_name = head.shorthand().unwrap_or("").to_string();
+
+    Ok(branch_name)
+}
