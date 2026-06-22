@@ -1,6 +1,13 @@
 use crate::infrastructure::database::models::Repository;
 use rusqlite::{params, Connection, Result};
 
+pub struct RepositoryMetrics {
+    pub total_commits: i64,
+    pub weekly_commits: i64,
+    pub last_commit_at: Option<String>,
+    pub unique_contributors: i64,
+}
+
 pub fn upsert_repository(
     conn: &Connection,
     root_id: i64,
@@ -126,6 +133,31 @@ pub fn get_all_repositories(conn: &Connection) -> Result<Vec<Repository>> {
     })?;
 
     Ok(repos.filter_map(Result::ok).collect())
+}
+
+pub fn get_repository_metrics(
+    conn: &Connection,
+    repo_id: i64,
+    week_ago: &str,
+) -> Result<RepositoryMetrics> {
+    conn.query_row(
+        r#"
+        SELECT
+            (SELECT COUNT(*) FROM commits WHERE repo_id = ?1),
+            (SELECT COUNT(*) FROM commits WHERE repo_id = ?1 AND committed_at >= ?2),
+            (SELECT MAX(committed_at) FROM commits WHERE repo_id = ?1),
+            (SELECT COUNT(*) FROM contributors WHERE repo_id = ?1)
+        "#,
+        params![repo_id, week_ago],
+        |row| {
+            Ok(RepositoryMetrics {
+                total_commits: row.get(0)?,
+                weekly_commits: row.get(1)?,
+                last_commit_at: row.get(2)?,
+                unique_contributors: row.get(3)?,
+            })
+        },
+    )
 }
 
 pub fn upsert_repo_activity(

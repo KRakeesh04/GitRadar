@@ -22,6 +22,8 @@ pub enum DomainError {
     InvalidBranch(String),
     HealthCheckFailed(String),
     ActivityCalculationFailed(String),
+    AddTrackedRootPathFailed(String),
+    DisableTrackedRootPathFailed(String),
 }
 
 impl std::fmt::Display for DomainError {
@@ -33,6 +35,12 @@ impl std::fmt::Display for DomainError {
             DomainError::HealthCheckFailed(msg) => write!(f, "Health check failed: {}", msg),
             DomainError::ActivityCalculationFailed(msg) => {
                 write!(f, "Activity calculation failed: {}", msg)
+            }
+            DomainError::AddTrackedRootPathFailed(msg) => {
+                write!(f, "Add track root path failed: {}", msg)
+            }
+            DomainError::DisableTrackedRootPathFailed(msg) => {
+                write!(f, "Disable track root path failed: {}", msg)
             }
         }
     }

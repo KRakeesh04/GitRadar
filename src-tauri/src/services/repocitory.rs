@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 
 use crate::{
-    domain::{DomainError, DomainResult, Repository},
+    domain::{ActivityLevel, DomainError, DomainResult, Repository},
     infrastructure::{
         database::repositories::{repositories, tracked_roots},
         git::{branch, repo},
     },
 };
+use chrono::{DateTime, Utc};
 use rayon::prelude::*;
 use rusqlite::Connection;
 
@@ -87,7 +88,8 @@ pub fn get_repository_info_by_id(conn: &Connection, repo_id: i64) -> DomainResul
         }
     };
 
-    let repo_info = Repository::new(
+    let is_dirty = repo.is_dirty;
+    let mut repo_info = Repository::new(
         repo_id,
         repo.name,
         PathBuf::from(repo.path),
@@ -97,7 +99,38 @@ pub fn get_repository_info_by_id(conn: &Connection, repo_id: i64) -> DomainResul
         repo.head_branch,
     )?;
 
-    // TODO: NEED TO DO CALCULATIONS FOR HEALTH SCORE AND ACTIVITY LEVEL HERE
+    let week_ago = (Utc::now() - chrono::Duration::days(7)).to_rfc3339();
+    let metrics = repositories::get_repository_metrics(conn, repo_id, &week_ago).map_err(|e| {
+        DomainError::InvalidRepository(format!("Failed to load repository metrics: {e}"))
+    })?;
+
+    let total_commits = u32::try_from(metrics.total_commits.max(0)).unwrap_or(u32::MAX);
+    let weekly_commits = u32::try_from(metrics.weekly_commits.max(0)).unwrap_or(u32::MAX);
+    let unique_contributors = u32::try_from(metrics.unique_contributors.max(0)).unwrap_or(u32::MAX);
+
+    let recency_score = metrics
+        .last_commit_at
+        .as_deref()
+        .and_then(|timestamp| DateTime::parse_from_rfc3339(timestamp).ok())
+        .map(
+            |timestamp| match (Utc::now() - timestamp.with_timezone(&Utc)).num_days() {
+                ..=7 => 1.0,
+                8..=30 => 0.8,
+                31..=90 => 0.6,
+                91..=180 => 0.4,
+                181..=365 => 0.2,
+                _ => 0.0,
+            },
+        )
+        .unwrap_or(0.0);
+    let history_score = (total_commits as f32 / 100.0).min(1.0);
+    let contributor_score = (unique_contributors as f32 / 3.0).min(1.0);
+    let health_score = (recency_score * 0.6) + (history_score * 0.2) + (contributor_score * 0.2);
+
+    repo_info.update_metrics(total_commits, unique_contributors);
+    repo_info.set_activity_level(ActivityLevel::from_weekly_commits(weekly_commits));
+    repo_info.set_health_score(health_score)?;
+    repo_info.set_dirty(is_dirty);
 
     Ok(repo_info)
 }
@@ -114,4 +147,20 @@ pub fn get_all_repositories(conn: &Connection) -> DomainResult<Vec<Repository>> 
     }
 
     Ok(result)
+}
+
+pub fn add_tracked_root_path(conn: &mut Connection, path: &str) -> DomainResult<i64> {
+    let added = match tracked_roots::insert_tracked_root(conn, path, true) {
+        Ok(added_id) => added_id,
+        Err(e) => return Err(DomainError::AddTrackedRootPathFailed(e.to_string())),
+    };
+
+    Ok(added)
+}
+
+pub fn disable_track_root_path(conn: &mut Connection, path: &str) -> DomainResult<()> {
+    match tracked_roots::update_tracked_root_enabled(conn, path, false) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(DomainError::DisableTrackedRootPathFailed(e.to_string())),
+    }
 }
