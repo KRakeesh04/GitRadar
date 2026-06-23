@@ -16,7 +16,28 @@ pub fn insert_commit(
     parent_hashes: &[String],
 ) -> Result<i64> {
     let inserted_at = chrono::Utc::now().to_rfc3339();
-    conn.execute(r#"INSERT INTO commits (repo_id, hash, author_name, author_email, committer_name, committer_email, subject, body, parent_count, committed_at, inserted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#, params![repo_id, hash, author_name, author_email, committer_name, committer_email, subject, body, parent_count, committed_at, inserted_at])?;
+    conn.execute(
+        r#"
+        INSERT INTO commits (
+            repo_id, hash, author_name, author_email, committer_name, committer_email, subject, 
+            body, parent_count, committed_at, inserted_at
+        ) 
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+        "#,
+        params![
+            repo_id,
+            hash,
+            author_name,
+            author_email,
+            committer_name,
+            committer_email,
+            subject,
+            body,
+            parent_count,
+            committed_at,
+            inserted_at
+        ],
+    )?;
     let commit_id = conn.last_insert_rowid();
     if !parent_hashes.is_empty() {
         super::commit_parents::insert_commit_parents_batch(conn, repo_id, hash, parent_hashes)?;
@@ -25,7 +46,14 @@ pub fn insert_commit(
 }
 
 pub fn get_commit_by_hash(conn: &Connection, repo_id: i64, hash: &str) -> Result<Option<Commit>> {
-    let mut stmt = conn.prepare("SELECT id, repo_id, hash, author_name, author_email, committer_name, committer_email, subject, body, parent_count, committed_at, inserted_at FROM commits WHERE repo_id = ? AND hash = ?")?;
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT id, repo_id, hash, author_name, author_email, committer_name, committer_email, subject, 
+                body, parent_count, committed_at, inserted_at 
+        FROM commits 
+        WHERE repo_id = ? AND hash = ?
+        "#
+    )?;
     let commit = stmt.query_row(params![repo_id, hash], |row| {
         Ok(Commit {
             id: row.get(0)?,
@@ -50,7 +78,15 @@ pub fn get_commit_by_hash(conn: &Connection, repo_id: i64, hash: &str) -> Result
 }
 
 pub fn get_commits_by_repo(conn: &Connection, repo_id: i64) -> Result<Vec<Commit>> {
-    let mut stmt = conn.prepare("SELECT id, repo_id, hash, author_name, author_email, committer_name, committer_email, subject, body, parent_count, committed_at, inserted_at FROM commits WHERE repo_id = ? ORDER BY committed_at DESC")?;
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT id, repo_id, hash, author_name, author_email, committer_name, committer_email, subject, 
+                body, parent_count, committed_at, inserted_at 
+        FROM commits 
+        WHERE repo_id = ? 
+        ORDER BY committed_at DESC
+        "#
+    )?;
     let commits = stmt.query_map(params![repo_id], |row| {
         Ok(Commit {
             id: row.get(0)?,

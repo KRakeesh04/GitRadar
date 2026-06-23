@@ -24,7 +24,14 @@ pub fn update_indexing_job_progress(
 ) -> Result<()> {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "UPDATE indexing_jobs SET progress = ?1, processed_items = ?2, updated_at = ?3 WHERE id = ?4",
+        r#"
+        UPDATE indexing_jobs 
+        SET 
+            progress = ?1, 
+            processed_items = ?2, 
+            updated_at = ?3 
+        WHERE id = ?4
+        "#,
         params![progress, processed_items, now, job_id],
     )?;
     Ok(())
@@ -45,12 +52,27 @@ pub fn update_indexing_job_status(
 
     if let Some(completed_at) = completed_at {
         conn.execute(
-            "UPDATE indexing_jobs SET status = ?1, error_message = ?2, completed_at = ?3, updated_at = ?4 WHERE id = ?5",
+            r#"
+            UPDATE indexing_jobs 
+            SET 
+                status = ?1, 
+                error_message = ?2, 
+                completed_at = ?3, 
+                updated_at = ?4 
+            WHERE id = ?5
+            "#,
             params![status, error_message, completed_at, now, job_id],
         )?;
     } else {
         conn.execute(
-            "UPDATE indexing_jobs SET status = ?1, error_message = ?2, updated_at = ?3 WHERE id = ?4",
+            r#"
+            UPDATE indexing_jobs 
+            SET 
+                status = ?1, 
+                error_message = ?2, 
+                updated_at = ?3 
+            WHERE id = ?4
+            "#,
             params![status, error_message, now, job_id],
         )?;
     }
@@ -59,9 +81,12 @@ pub fn update_indexing_job_status(
 
 pub fn get_indexing_job(conn: &Connection, job_id: i64) -> Result<Option<IndexingJob>> {
     let mut stmt = conn.prepare(
-        "SELECT id, repo_id, job_type, status, progress, total_items, processed_items, 
-                error_message, started_at, completed_at, created_at, updated_at 
-         FROM indexing_jobs WHERE id = ?1",
+        r#"
+        SELECT id, repo_id, job_type, status, progress, total_items, processed_items, 
+            error_message, started_at, completed_at, created_at, updated_at 
+        FROM indexing_jobs 
+        WHERE id = ?1
+        "#,
     )?;
     let job = stmt.query_row([job_id], |row| {
         Ok(IndexingJob {
@@ -91,10 +116,14 @@ pub fn get_indexing_jobs_by_repo(
     repo_id: i64,
     limit: Option<i32>,
 ) -> Result<Vec<IndexingJob>> {
-    let mut sql = "SELECT id, repo_id, job_type, status, progress, total_items, processed_items, 
-                    error_message, started_at, completed_at, created_at, updated_at 
-                   FROM indexing_jobs WHERE repo_id = ?1 ORDER BY created_at DESC"
-        .to_string();
+    let mut sql = r#"
+        SELECT id, repo_id, job_type, status, progress, total_items, processed_items, 
+            error_message, started_at, completed_at, created_at, updated_at 
+        FROM indexing_jobs 
+        WHERE repo_id = ?1 
+        ORDER BY created_at DESC
+    "#
+    .to_string();
 
     if let Some(limit) = limit {
         sql.push_str(&format!(" LIMIT {}", limit));
@@ -122,9 +151,13 @@ pub fn get_indexing_jobs_by_repo(
 
 pub fn get_pending_indexing_jobs(conn: &Connection) -> Result<Vec<IndexingJob>> {
     let mut stmt = conn.prepare(
-        "SELECT id, repo_id, job_type, status, progress, total_items, processed_items, 
-                error_message, started_at, completed_at, created_at, updated_at 
-         FROM indexing_jobs WHERE status = 'pending' ORDER BY created_at ASC",
+        r#"
+        SELECT id, repo_id, job_type, status, progress, total_items, processed_items, 
+            error_message, started_at, completed_at, created_at, updated_at 
+        FROM indexing_jobs 
+        WHERE status = 'pending' 
+        ORDER BY created_at ASC
+        "#,
     )?;
     let jobs = stmt.query_map([], |row| {
         Ok(IndexingJob {

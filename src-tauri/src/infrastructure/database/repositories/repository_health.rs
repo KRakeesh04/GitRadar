@@ -31,8 +31,11 @@ pub fn upsert_repository_health(
 
 pub fn get_repository_health(conn: &Connection, repo_id: i64) -> Result<Option<RepositoryHealth>> {
     let mut stmt = conn.prepare(
-        "SELECT repo_id, health_score, issues_count, warnings_count, check_status, last_check_at 
-         FROM repository_health WHERE repo_id = ?1",
+        r#"
+        SELECT repo_id, health_score, issues_count, warnings_count, check_status, last_check_at 
+        FROM repository_health 
+        WHERE repo_id = ?1
+        "#,
     )?;
     let health = stmt.query_row([repo_id], |row| {
         Ok(RepositoryHealth {

@@ -16,7 +16,11 @@ pub fn insert_tracked_root(conn: &Connection, path: &str, is_enabled: bool) -> R
 
 pub fn get_tracked_root_by_path(conn: &Connection, path: &str) -> Result<Option<TrackedRoot>> {
     let mut stmt = conn.prepare(
-        "SELECT id, path, is_enabled, created_at, updated_at FROM tracked_roots WHERE path = ?1",
+        r#"
+        SELECT id, path, is_enabled, created_at, updated_at 
+        FROM tracked_roots 
+        WHERE path = ?1
+        "#,
     )?;
     let root = stmt.query_row([path], |row| {
         Ok(TrackedRoot {
@@ -36,7 +40,11 @@ pub fn get_tracked_root_by_path(conn: &Connection, path: &str) -> Result<Option<
 
 pub fn get_all_tracked_roots(conn: &Connection) -> Result<Vec<TrackedRoot>> {
     let mut stmt = conn.prepare(
-        "SELECT id, path, is_enabled, created_at, updated_at FROM tracked_roots ORDER BY path",
+        r#"
+        SELECT id, path, is_enabled, created_at, updated_at 
+        FROM tracked_roots 
+        ORDER BY path
+        "#,
     )?;
     let roots = stmt.query_map([], |row| {
         Ok(TrackedRoot {
@@ -50,18 +58,32 @@ pub fn get_all_tracked_roots(conn: &Connection) -> Result<Vec<TrackedRoot>> {
     Ok(roots.filter_map(Result::ok).collect())
 }
 
-pub fn update_tracked_root_enabled(conn: &Connection, path: &str, is_enabled: bool) -> Result<()> {
+pub fn update_tracked_root_enabled(
+    conn: &Connection,
+    path: &str,
+    is_enabled: bool,
+) -> Result<bool> {
     let now = chrono::Utc::now().to_rfc3339();
-    conn.execute(
-        "UPDATE tracked_roots SET is_enabled = ?1, updated_at = ?2 WHERE path = ?3",
-        params![is_enabled, now, path],
+
+    let rows = conn.execute(
+        r#"
+        UPDATE tracked_roots
+        SET
+            is_enabled = ?1,
+            updated_at = ?2
+        WHERE
+            path = ?3
+            AND is_enabled != ?1
+        "#,
+        params![is_enabled, now, path,],
     )?;
-    Ok(())
+
+    Ok(rows > 0)
 }
 
-pub fn delete_tracked_root(conn: &Connection, id: i64) -> Result<()> {
-    conn.execute("DELETE FROM tracked_roots WHERE id = ?1", params![id])?;
-    Ok(())
+pub fn delete_tracked_root(conn: &Connection, id: i64) -> Result<bool> {
+    let rows = conn.execute("DELETE FROM tracked_roots WHERE id = ?1", params![id])?;
+    Ok(rows > 0)
 }
 
 pub fn insert_track_ignore_root(conn: &Connection, path: &str) -> Result<i64> {
@@ -81,7 +103,11 @@ pub fn get_track_ignore_root_by_path(
     path: &str,
 ) -> Result<Option<TrackIgnoreRoot>> {
     let mut stmt = conn.prepare(
-        "SELECT id, path, created_at, updated_at FROM track_ignore_roots WHERE path = ?1",
+        r#"
+        SELECT id, path, created_at, updated_at 
+        FROM track_ignore_roots 
+        WHERE path = ?1
+        "#,
     )?;
     let root = stmt.query_row([path], |row| {
         Ok(TrackIgnoreRoot {
@@ -99,8 +125,13 @@ pub fn get_track_ignore_root_by_path(
 }
 
 pub fn get_all_track_ignore_roots(conn: &Connection) -> Result<Vec<TrackIgnoreRoot>> {
-    let mut stmt = conn
-        .prepare("SELECT id, path, created_at, updated_at FROM track_ignore_roots ORDER BY path")?;
+    let mut stmt = conn.prepare(
+        r#"
+            SELECT id, path, created_at, updated_at 
+            FROM track_ignore_roots 
+            ORDER BY path
+            "#,
+    )?;
     let roots = stmt.query_map([], |row| {
         Ok(TrackIgnoreRoot {
             id: row.get(0)?,
