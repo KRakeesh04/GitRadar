@@ -69,7 +69,7 @@ pub fn get_branch_by_name(conn: &Connection, repo_id: i64, name: &str) -> Result
     }
 }
 
-pub fn get_all_branches(conn: &Connection, repo_id: i64) -> Result<Vec<Branch>> {
+pub fn get_all_branches(conn: &Connection, repo_id: i64) -> Result<Option<Vec<Branch>>> {
     let mut stmt = conn.prepare("
             SELECT id, repo_id, name, is_head, is_default, last_commit_hash, last_commit_at, ahead_count_from_default,
                     behind_count_from_default, ahead_count_from_remote, behind_count_from_remote, updated_at 
@@ -94,7 +94,7 @@ pub fn get_all_branches(conn: &Connection, repo_id: i64) -> Result<Vec<Branch>> 
             updated_at: row.get(11)?,
         })
     })?;
-    Ok(branches.filter_map(Result::ok).collect())
+    Ok(Some(branches.filter_map(Result::ok).collect()))
 }
 
 pub fn get_or_create_branch(
