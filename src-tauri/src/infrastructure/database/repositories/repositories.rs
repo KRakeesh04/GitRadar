@@ -1,4 +1,4 @@
-use crate::infrastructure::database::models::Repository;
+use crate::infrastructure::database::models::repository::RepositorySummary;
 use rusqlite::{params, Connection, Result};
 
 pub struct RepositoryMetrics {
@@ -68,16 +68,16 @@ pub fn upsert_repository(
     Ok(())
 }
 
-pub fn get_repository_by_id(conn: &Connection, id: i64) -> Result<Option<Repository>> {
+pub fn get_repository_by_id(conn: &Connection, id: i64) -> Result<Option<RepositorySummary>> {
     let mut stmt = conn.prepare(
         "SELECT id, root_id, name, path, git_dir_path, repo_type, remote_url, default_branch, head_branch,
-                is_dirty, last_commit_hash, last_commit_at, last_scanned_at,
-                last_indexed_at, index_status, created_at, updated_at
-         FROM repositories WHERE id = ?1",
+                is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
+                created_at, updated_at, health_score, total_commits, unique_contributors
+         FROM repository_summary WHERE id = ?1",
     )?;
 
     let repo = stmt.query_map([id], |row| {
-        Ok(Repository {
+        Ok(RepositorySummary {
             id: row.get(0)?,
             root_id: row.get(1)?,
             name: row.get(2)?,
@@ -95,23 +95,31 @@ pub fn get_repository_by_id(conn: &Connection, id: i64) -> Result<Option<Reposit
             index_status: row.get(14)?,
             created_at: row.get(15)?,
             updated_at: row.get(16)?,
+            health_score: row.get(17)?,
+            total_commits: row.get(18)?,
+            weekly_commits: row.get(19)?,
+            unique_contributors: row.get(20)?,
         })
     })?;
 
-    let result: Vec<Repository> = repo.filter_map(Result::ok).collect();
+    let result: Vec<RepositorySummary> = repo.filter_map(Result::ok).collect();
     Ok(result.into_iter().next())
 }
 
-pub fn get_all_repositories(conn: &Connection) -> Result<Vec<Repository>> {
+pub fn get_all_repositories(
+    conn: &Connection,
+    count: usize,
+    offset: usize,
+) -> Result<Option<Vec<RepositorySummary>>> {
     let mut stmt = conn.prepare(
         "SELECT id, root_id, name, path, git_dir_path, repo_type, remote_url, default_branch, head_branch,
-                is_dirty, last_commit_hash, last_commit_at, last_scanned_at,
-                last_indexed_at, index_status, created_at, updated_at
-         FROM repositories ORDER BY updated_at DESC",
+                is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
+                created_at, updated_at, health_score, total_commits, weekly_commits, unique_contributors
+         FROM repository_summary ORDER BY updated_at DESC LIMIT ?1 OFFSET ?2",
     )?;
 
-    let repos = stmt.query_map([], |row| {
-        Ok(Repository {
+    let repos = stmt.query_map([count, offset], |row| {
+        Ok(RepositorySummary {
             id: row.get(0)?,
             root_id: row.get(1)?,
             name: row.get(2)?,
@@ -129,10 +137,14 @@ pub fn get_all_repositories(conn: &Connection) -> Result<Vec<Repository>> {
             index_status: row.get(14)?,
             created_at: row.get(15)?,
             updated_at: row.get(16)?,
+            health_score: row.get(17)?,
+            total_commits: row.get(18)?,
+            weekly_commits: row.get(19)?,
+            unique_contributors: row.get(20)?,
         })
     })?;
 
-    Ok(repos.filter_map(Result::ok).collect())
+    Ok(Some(repos.filter_map(Result::ok).collect()))
 }
 
 pub fn get_repository_metrics(

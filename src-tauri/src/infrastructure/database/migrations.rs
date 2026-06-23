@@ -384,15 +384,37 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         CREATE VIEW IF NOT EXISTS repository_summary AS
         SELECT
             r.id,
+            r.root_id,
             r.name,
             r.path,
+            r.git_dir_path,
+            h.health_score,
+            r.default_branch,
             r.head_branch,
-            r.last_commit_at,
+            r.remote_url,
             r.is_dirty,
-            h.health_score
+            r.last_commit_hash,
+            r.last_commit_at,
+            r.last_scanned_at,
+            r.last_indexed_at,
+            r.index_status,
+            r.created_at,
+            r.updated_at,
+            c.total_commits,
+            c.weekly_commits,
+            c.unique_contributors
         FROM repositories r
         LEFT JOIN repository_health h
-            ON h.repo_id = r.id;
+            ON h.repo_id = r.id
+        LEFT JOIN (
+            SELECT 
+                repo_id, 
+                COUNT(*) as total_commits, 
+                COUNT(DISTINCT author_email) as unique_contributors,
+                SUM(CASE WHEN committed_at >= date('now', '-7 days') THEN 1 ELSE 0 END) as weekly_commits
+            FROM commits
+            GROUP BY repo_id
+        ) c ON c.repo_id = r.id;
         "#,
     )?;
 

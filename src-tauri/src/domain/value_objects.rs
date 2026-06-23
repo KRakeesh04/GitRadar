@@ -77,6 +77,16 @@ pub enum ActivityLevel {
 }
 
 impl ActivityLevel {
+    pub fn from_str(level: &str) -> Option<Self> {
+        match level {
+            "VeryLow" => Some(ActivityLevel::VeryLow),
+            "Low" => Some(ActivityLevel::Low),
+            "Moderate" => Some(ActivityLevel::Moderate),
+            "High" => Some(ActivityLevel::High),
+            "VeryHigh" => Some(ActivityLevel::VeryHigh),
+            _ => None,
+        }
+    }
     // Calculate activity level from commits in last 7 days
     // Pure business logic - no database access
     pub fn from_weekly_commits(commit_count: u32) -> Self {
