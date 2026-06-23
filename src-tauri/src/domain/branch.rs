@@ -11,8 +11,10 @@ pub struct Branch {
     pub is_head: bool,
     pub is_default: bool,
     pub last_commit_hash: Option<String>,
-    pub ahead_count: u32,
-    pub behind_count: u32,
+    pub ahead_count_from_remote: u32,
+    pub behind_count_from_remote: u32,
+    pub ahead_count_from_default: u32,
+    pub behind_count_from_default: u32,
 }
 
 impl Branch {
@@ -40,21 +42,23 @@ impl Branch {
             is_head,
             is_default,
             last_commit_hash: None,
-            ahead_count: 0,
-            behind_count: 0,
+            ahead_count_from_remote: 0,
+            behind_count_from_remote: 0,
+            ahead_count_from_default: 0,
+            behind_count_from_default: 0,
         })
     }
 
     pub fn is_ahead(&self) -> bool {
-        self.ahead_count > 0
+        self.ahead_count_from_default > 0
     }
 
     pub fn is_behind(&self) -> bool {
-        self.behind_count > 0
+        self.behind_count_from_default > 0
     }
 
     pub fn is_in_sync(&self) -> bool {
-        self.ahead_count == 0 && self.behind_count == 0
+        self.ahead_count_from_default == 0 && self.behind_count_from_default == 0
     }
 
     // Get branch status
@@ -73,21 +77,37 @@ impl Branch {
             BranchStatus::InSync => "In sync with default".to_string(),
             BranchStatus::Ahead => format!(
                 "Ahead by {} commit{} from default",
-                self.ahead_count,
-                if self.ahead_count == 1 { "" } else { "s" }
+                self.ahead_count_from_default,
+                if self.ahead_count_from_default == 1 {
+                    ""
+                } else {
+                    "s"
+                }
             ),
             BranchStatus::Behind => format!(
                 "Behind by {} commit{} from default",
-                self.behind_count,
-                if self.behind_count == 1 { "" } else { "s" }
+                self.behind_count_from_default,
+                if self.behind_count_from_default == 1 {
+                    ""
+                } else {
+                    "s"
+                }
             ),
             BranchStatus::Diverged => {
                 format!(
                     "Ahead by {} commit{} and behind by {} commit{} from default",
-                    self.ahead_count,
-                    if self.ahead_count == 1 { "" } else { "s" },
-                    self.behind_count,
-                    if self.behind_count == 1 { "" } else { "s" }
+                    self.ahead_count_from_default,
+                    if self.ahead_count_from_default == 1 {
+                        ""
+                    } else {
+                        "s"
+                    },
+                    self.behind_count_from_default,
+                    if self.behind_count_from_default == 1 {
+                        ""
+                    } else {
+                        "s"
+                    }
                 )
             }
         }
@@ -100,7 +120,7 @@ impl Branch {
 
     // Behind by many commits
     pub fn is_stale(&self) -> bool {
-        self.behind_count > 50 && !self.is_head
+        self.behind_count_from_default > 50 && !self.is_head
     }
 
     // Determine branch importance
@@ -123,8 +143,8 @@ impl Branch {
 
     // Update sync information
     pub fn update_sync_info(&mut self, ahead: u32, behind: u32) {
-        self.ahead_count = ahead;
-        self.behind_count = behind;
+        self.ahead_count_from_default = ahead;
+        self.behind_count_from_default = behind;
     }
 
     // Set last commit hash

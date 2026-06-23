@@ -2,6 +2,7 @@ pub mod branch;
 pub mod commit;
 pub mod contributor;
 pub mod repository;
+pub mod tracked_root;
 pub mod value_objects;
 
 // Re-export commonly used domain types
@@ -9,6 +10,7 @@ pub use branch::{Branch, BranchType};
 pub use commit::{Commit, CommitInfo};
 pub use contributor::Contributor;
 pub use repository::Repository;
+pub use tracked_root::TrackedRoot;
 pub use value_objects::{ActivityLevel, HealthScore, RepositoryId};
 
 // Result type for domain operations
@@ -22,8 +24,9 @@ pub enum DomainError {
     InvalidBranch(String),
     HealthCheckFailed(String),
     ActivityCalculationFailed(String),
-    AddTrackedRootPathFailed(String),
-    DisableTrackedRootPathFailed(String),
+    AddOrDeleteTrackedRootPathFailed(String),
+    EnableTrackedRootPathFailed(String),
+    GetTrackedRootPathsFailed(String),
 }
 
 impl std::fmt::Display for DomainError {
@@ -36,11 +39,14 @@ impl std::fmt::Display for DomainError {
             DomainError::ActivityCalculationFailed(msg) => {
                 write!(f, "Activity calculation failed: {}", msg)
             }
-            DomainError::AddTrackedRootPathFailed(msg) => {
-                write!(f, "Add track root path failed: {}", msg)
+            DomainError::AddOrDeleteTrackedRootPathFailed(msg) => {
+                write!(f, "Add or delete track root path failed: {}", msg)
             }
-            DomainError::DisableTrackedRootPathFailed(msg) => {
-                write!(f, "Disable track root path failed: {}", msg)
+            DomainError::EnableTrackedRootPathFailed(msg) => {
+                write!(f, "Enable or disable track root path failed: {}", msg)
+            }
+            DomainError::GetTrackedRootPathsFailed(msg) => {
+                write!(f, "Get track root paths failed: {}", msg)
             }
         }
     }

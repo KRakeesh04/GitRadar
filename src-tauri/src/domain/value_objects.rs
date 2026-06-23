@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 // Health Score: 0.0 to 1.0 indicating repository health
 // Pure business value - calculated from repository metrics
 #[derive(Debug, Clone, Copy, PartialEq)]

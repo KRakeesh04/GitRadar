@@ -239,6 +239,14 @@ pub struct HealthReport {
     pub maintenance_needed: bool,
     pub is_dormant: bool,
 }
+#[derive(Debug, Clone)]
+pub struct RepositoryCalculatedMetrics {
+    pub total_commits: u32,
+    pub weekly_commits: u32,
+    pub unique_contributors: u32,
+    pub health_score: HealthScore,
+    pub activity_level: ActivityLevel,
+}
 
 #[cfg(test)]
 mod tests {
