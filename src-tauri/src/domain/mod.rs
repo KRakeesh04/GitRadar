@@ -1,6 +1,7 @@
 pub mod branch;
 pub mod commit;
 pub mod contributor;
+pub mod file;
 pub mod repository;
 pub mod tracked_root;
 pub mod value_objects;
@@ -9,6 +10,10 @@ pub mod value_objects;
 pub use branch::{Branch, BranchType};
 pub use commit::{Commit, CommitInfo};
 pub use contributor::Contributor;
+pub use file::{
+    CommitFileStat, FileHotspot, LanguageStat, LanguageStats, RepositoryActivityDaily,
+    RepositoryFile,
+};
 pub use repository::Repository;
 pub use tracked_root::TrackedRoot;
 pub use value_objects::{ActivityLevel, HealthScore, RepositoryId};
