@@ -151,3 +151,19 @@ pub fn get_files_by_extension(
     })?;
     Ok(files.filter_map(Result::ok).collect())
 }
+
+pub fn get_files_extensions_and_file_sizes(
+    conn: &Connection,
+    repo_id: i64,
+) -> Result<Vec<(String, i64)>> {
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT extension, SUM(size_bytes) as total_size
+        FROM repository_files
+        WHERE repo_id = ?1
+        GROUP BY extension
+        "#,
+    )?;
+    let results = stmt.query_map(params![repo_id], |row| Ok((row.get(0)?, row.get(1)?)))?;
+    Ok(results.filter_map(Result::ok).collect())
+}

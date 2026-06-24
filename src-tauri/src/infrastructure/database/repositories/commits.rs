@@ -77,7 +77,12 @@ pub fn get_commit_by_hash(conn: &Connection, repo_id: i64, hash: &str) -> Result
     }
 }
 
-pub fn get_commits_by_repo(conn: &Connection, repo_id: i64) -> Result<Vec<Commit>> {
+pub fn get_commits_by_repo(
+    conn: &Connection,
+    repo_id: i64,
+    count: usize,
+    offset: usize,
+) -> Result<Option<Vec<Commit>>> {
     let mut stmt = conn.prepare(
         r#"
         SELECT id, repo_id, hash, author_name, author_email, committer_name, committer_email, subject, 
@@ -85,9 +90,10 @@ pub fn get_commits_by_repo(conn: &Connection, repo_id: i64) -> Result<Vec<Commit
         FROM commits 
         WHERE repo_id = ? 
         ORDER BY committed_at DESC
+        LIMIT ? OFFSET ?
         "#
     )?;
-    let commits = stmt.query_map(params![repo_id], |row| {
+    let commits = stmt.query_map(params![repo_id, count, offset], |row| {
         Ok(Commit {
             id: row.get(0)?,
             repo_id: row.get(1)?,
@@ -107,5 +113,5 @@ pub fn get_commits_by_repo(conn: &Connection, repo_id: i64) -> Result<Vec<Commit
     for commit in commits {
         result.push(commit?);
     }
-    Ok(result)
+    Ok(Some(result))
 }
