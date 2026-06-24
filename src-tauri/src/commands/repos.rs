@@ -2,7 +2,9 @@ use serde::Serialize;
 use tauri::State;
 
 use crate::{
-    domain::Repository, infrastructure::database::connection::get_connection, services::repocitory,
+    domain::Repository,
+    infrastructure::database::connection::get_connection,
+    services::{repository_discovery_service, repository_query_service, tracked_root_service},
     state::AppState,
 };
 
@@ -47,7 +49,7 @@ pub fn get_repository_info(
     state: State<'_, AppState>,
 ) -> Result<RepositoryResponse, String> {
     let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
-    repocitory::get_repository_info_by_id(&conn, repo_id)
+    repository_query_service::get_repository_info_by_id(&conn, repo_id)
         .map(RepositoryResponse::from)
         .map_err(|e| e.to_string())
 }
@@ -55,7 +57,7 @@ pub fn get_repository_info(
 #[tauri::command]
 pub fn get_all_repositories(state: State<'_, AppState>) -> Result<Vec<RepositoryResponse>, String> {
     let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
-    repocitory::get_all_repositories(&conn)
+    repository_query_service::get_all_repositories(&conn, 100, 0)
         .map(|repositories| {
             repositories
                 .into_iter()
@@ -68,11 +70,11 @@ pub fn get_all_repositories(state: State<'_, AppState>) -> Result<Vec<Repository
 #[tauri::command]
 pub fn discover_repositories(state: State<'_, AppState>) -> Result<(), String> {
     let mut conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
-    repocitory::discover_repositories(&mut conn)
+    repository_discovery_service::discover_repositories(&mut conn)
 }
 
 #[tauri::command]
 pub fn add_tracked_root_path(path: String, state: State<'_, AppState>) -> Result<i64, String> {
     let mut conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
-    repocitory::add_tracked_root_path(&mut conn, &path).map_err(|e| e.to_string())
+    tracked_root_service::add_tracked_root_path(&mut conn, &path).map_err(|e| e.to_string())
 }
