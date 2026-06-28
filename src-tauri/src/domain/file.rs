@@ -56,3 +56,12 @@ pub struct LanguageStat {
     pub language: String,
     pub bytes: u64,
 }
+
+#[derive(Debug, Clone)]
+pub struct FileTreeNode {
+    pub name: String,
+    pub path: String,
+    pub is_directory: bool,
+    pub size_or_file_count: u64,
+    pub children: Vec<FileTreeNode>,
+}

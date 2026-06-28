@@ -4,8 +4,8 @@ use rusqlite::Connection;
 
 use crate::{
     domain::{
-        CommitFileStat, DomainError, DomainResult, FileHotspot, LanguageStat, LanguageStats,
-        RepositoryFile,
+        file::FileTreeNode, CommitFileStat, DomainError, DomainResult, FileHotspot, LanguageStat,
+        LanguageStats, RepositoryFile,
     },
     infrastructure::database::{
         models::file_change::{
@@ -99,6 +99,82 @@ pub fn get_file_hotspots(conn: &Connection, repo_id: i64) -> DomainResult<Vec<Fi
     file_stats::get_file_hotspots(conn, repo_id)
         .map_err(|error| file_database_error("load file hotspots", error))
         .map(|hotspots| hotspots.into_iter().map(map_file_hotspot).collect())
+}
+
+pub fn get_repository_file_tree(
+    conn: &Connection,
+    repo_id: i64,
+) -> DomainResult<Vec<FileTreeNode>> {
+    let files = repository_files::get_repository_files(conn, repo_id)
+        .map_err(|e| file_database_error("load repository files", e))?;
+
+    let mut tree = Vec::new();
+
+    for file in files {
+        let size = file.size_bytes.unwrap_or(0) as u64;
+        insert_into_tree(&mut tree, &file.file_path, size);
+    }
+
+    sort_tree(&mut tree);
+
+    Ok(tree)
+}
+
+fn insert_into_tree(tree: &mut Vec<FileTreeNode>, full_path: &str, size: u64) {
+    let parts: Vec<&str> = full_path.split('/').collect();
+    insert_parts(tree, &parts, String::new(), size);
+}
+
+fn insert_parts(tree: &mut Vec<FileTreeNode>, parts: &[&str], current_path: String, size: u64) {
+    if parts.is_empty() {
+        return;
+    }
+
+    let name = parts[0];
+
+    let path = if current_path.is_empty() {
+        name.to_string()
+    } else {
+        format!("{}/{}", current_path, name)
+    };
+
+    let is_directory = parts.len() > 1;
+
+    let index = tree
+        .iter()
+        .position(|n| n.name == name && n.is_directory == is_directory);
+
+    let node = if let Some(i) = index {
+        &mut tree[i]
+    } else {
+        tree.push(FileTreeNode {
+            name: name.to_string(),
+            path: path.clone(),
+            size_or_file_count: if is_directory { 0 } else { size },
+            is_directory,
+            children: Vec::new(),
+        });
+
+        tree.last_mut().unwrap()
+    };
+
+    if node.is_directory {
+        node.size_or_file_count += 1;
+    }
+
+    insert_parts(&mut node.children, &parts[1..], path, size);
+}
+
+fn sort_tree(tree: &mut Vec<FileTreeNode>) {
+    tree.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.cmp(&b.name),
+    });
+
+    for node in tree {
+        sort_tree(&mut node.children);
+    }
 }
 
 fn map_repository_file(file: DatabaseRepositoryFile) -> RepositoryFile {
