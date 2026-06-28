@@ -1,6 +1,7 @@
 pub mod analytics_service;
 pub mod branch_service;
 pub mod commit_service;
+pub mod contributor_service;
 pub mod file_service;
 pub mod repository_discovery_service;
 pub mod repository_query_service;
