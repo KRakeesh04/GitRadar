@@ -34,10 +34,35 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // Repository commands
             commands::repos::get_repository_info,
             commands::repos::get_all_repositories,
             commands::repos::discover_repositories,
             commands::repos::add_tracked_root_path,
+            commands::repos::get_all_tracked_root_paths,
+            commands::repos::set_tracked_root_enabled,
+            commands::repos::delete_tracked_root_path,
+            // Branch commands
+            commands::branches::get_repository_branches,
+            commands::branches::get_branch_info,
+            // Commit commands
+            commands::commits::get_commits,
+            commands::commits::get_commit_by_hash,
+            // File commands
+            commands::files::get_repository_files,
+            commands::files::get_repository_file_by_path,
+            commands::files::get_files_by_extension,
+            commands::files::get_file_stats,
+            commands::files::get_file_stats_by_path,
+            commands::files::get_file_hotspots,
+            commands::files::get_repo_languages_stats,
+            // Analytics commands
+            commands::analytics::get_repository_activity,
+            // commands::analytics::get_contributors,
+            // commands::analytics::get_top_contributors,
+            // commands::analytics::get_contributor_by_email,
+            // // Sync commands
+            // commands::sync::calculate_repository_metrics,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri app");

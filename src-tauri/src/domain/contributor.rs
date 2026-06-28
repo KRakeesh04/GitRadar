@@ -1,8 +1,5 @@
-/// Contributor Domain Entity
-/// Pure business logic for contributors
 use super::DomainResult;
 
-/// Contributor - Core business entity for a repository contributor
 #[derive(Debug, Clone)]
 pub struct Contributor {
     pub id: ContributorId,
