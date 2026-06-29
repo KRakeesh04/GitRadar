@@ -1,4 +1,4 @@
-use crate::infrastructure::database::models::commit::Commit;
+use crate::infrastructure::database::models::commit::{Commit, CommitGraphNode};
 use rusqlite::{params, Connection, Result};
 
 pub fn insert_commit(
@@ -114,4 +114,99 @@ pub fn get_commits_by_repo(
         result.push(commit?);
     }
     Ok(Some(result))
+}
+
+pub fn get_commit_graph(
+    conn: &Connection,
+    repo_id: i64,
+    limit: usize,
+    offset: usize,
+) -> Result<Vec<CommitGraphNode>> {
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT
+            c.hash,
+            GROUP_CONCAT(b.name),
+            c.author_name,
+            c.author_email,
+            c.subject,
+            c.committed_at,
+            COALESCE(fs.additions, 0),
+            COALESCE(fs.deletions, 0),
+            COALESCE(fs.file_count, 0),
+            GROUP_CONCAT(cp.parent_hash)
+
+        FROM commits c
+
+        LEFT JOIN commit_parents cp
+            ON cp.repo_id = c.repo_id
+           AND cp.commit_hash = c.hash
+
+        LEFT JOIN (
+            SELECT
+                repo_id,
+                commit_hash,
+                SUM(additions) AS additions,
+                SUM(deletions) AS deletions,
+                COUNT(*) AS file_count
+            FROM commit_file_stats
+            GROUP BY repo_id, commit_hash
+        ) fs
+            ON fs.repo_id = c.repo_id
+           AND fs.commit_hash = c.hash
+
+        LEFT JOIN branches b
+            ON b.repo_id = c.repo_id
+           AND b.last_commit_hash = c.hash
+
+        WHERE c.repo_id = ?
+
+        GROUP BY
+            c.hash,
+            c.author_name,
+            c.author_email,
+            c.subject,
+            c.committed_at,
+            fs.additions,
+            fs.deletions,
+            fs.file_count
+
+        ORDER BY c.committed_at DESC
+
+        LIMIT ? OFFSET ?
+        "#,
+    )?;
+
+    let commits = stmt.query_map(params![repo_id, limit as i64, offset as i64], |row| {
+        let parent_hashes = row
+            .get::<_, Option<String>>(9)?
+            .unwrap_or_default()
+            .split(',')
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect();
+
+        let branch_names = row
+            .get::<_, Option<String>>(1)?
+            .unwrap_or_default()
+            .split(',')
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect();
+
+        Ok(CommitGraphNode {
+            hash: row.get(0)?,
+            branch_names,
+            author_name: row.get(2)?,
+            author_email: row.get(3)?,
+            subject: row.get(4)?,
+            committed_at: row.get(5)?,
+            additions: row.get(6)?,
+            deletions: row.get(7)?,
+            total_changed_files_count: row.get(8)?,
+            parent_hashes,
+        })
+    })?;
+
+    commits.collect()
 }

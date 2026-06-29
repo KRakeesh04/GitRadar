@@ -194,6 +194,20 @@ pub struct CommitInfo {
     pub timestamp: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct CommitGraphNode {
+    pub hash: String,
+    pub branches: Vec<String>,
+    pub author_name: String,
+    pub author_email: String,
+    pub subject: String,
+    pub committed_at: String,
+    pub total_additions: i32,
+    pub total_deletions: i32,
+    pub total_files_changed: i32,
+    pub parents: Vec<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

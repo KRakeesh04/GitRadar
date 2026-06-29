@@ -1,9 +1,11 @@
 use rusqlite::Connection;
 
 use crate::{
-    domain::{Commit, DomainError, DomainResult},
-    infrastructure::database::models::commit::Commit as DatabaseCommit,
-    infrastructure::database::repositories::commits,
+    domain::{commit::CommitGraphNode, Commit, DomainError, DomainResult},
+    infrastructure::database::{
+        models::commit::Commit as DatabaseCommit,
+        models::commit::CommitGraphNode as DatabaseCommitGraphNode, repositories::commits,
+    },
 };
 
 pub fn get_commits(
@@ -31,6 +33,24 @@ pub fn get_commit_by_hash(conn: &Connection, repo_id: i64, hash: &str) -> Domain
     map_commit(commit)
 }
 
+pub fn get_commit_graph(
+    conn: &Connection,
+    repo_id: i64,
+    limit: usize,
+    offset: usize,
+) -> DomainResult<Vec<CommitGraphNode>> {
+    let commit_graph = match commits::get_commit_graph(conn, repo_id, limit, offset) {
+        Ok(commit_graph) => commit_graph,
+        Err(error) => return Err(commit_database_error("load commit graph", error)),
+    };
+
+    commit_graph
+        .into_iter()
+        .map(map_commit_graph_node)
+        .collect()
+}
+
+
 fn map_commit(commit: DatabaseCommit) -> DomainResult<Commit> {
     let parent_count = u32::try_from(commit.parent_count).map_err(|_| {
         DomainError::InvalidCommit(format!(
@@ -55,6 +75,21 @@ fn map_commit(commit: DatabaseCommit) -> DomainResult<Commit> {
     }
 
     Ok(domain_commit)
+}
+
+fn map_commit_graph_node(node: DatabaseCommitGraphNode) -> DomainResult<CommitGraphNode> {
+    Ok(CommitGraphNode {
+        hash: node.hash,
+        branches: node.branch_names,
+        author_name: node.author_name,
+        author_email: node.author_email,
+        subject: node.subject,
+        committed_at: node.committed_at,
+        total_additions: node.additions,
+        total_deletions: node.deletions,
+        total_files_changed: node.total_changed_files_count,
+        parents: node.parent_hashes,
+    })
 }
 
 fn commit_database_error(action: &str, error: rusqlite::Error) -> DomainError {
