@@ -275,3 +275,9 @@ pub fn get_activity_summary(
 
     Ok(result)
 }
+
+pub fn get_repository_path(conn: &Connection, repo_id: i64) -> Result<Option<String>> {
+    let mut stmt = conn.prepare("SELECT path FROM repositories WHERE id = ?1 LIMIT 1")?;
+    let path: Option<String> = stmt.query_row([repo_id], |row| row.get(0))?;
+    Ok(path)
+}

@@ -65,3 +65,9 @@ pub struct FileTreeNode {
     pub size_or_file_count: u64,
     pub children: Vec<FileTreeNode>,
 }
+
+#[derive(Debug, Clone)]
+pub struct FileData {
+    pub mime_type: String,
+    pub data: Vec<u8>,
+}

@@ -1,18 +1,25 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    path::{Component, Path, PathBuf},
+};
 
 use rusqlite::Connection;
 
 use crate::{
     domain::{
-        file::FileTreeNode, CommitFileStat, DomainError, DomainResult, FileHotspot, LanguageStat,
-        LanguageStats, RepositoryFile,
+        file::{FileData, FileTreeNode},
+        CommitFileStat, DomainError, DomainResult, FileHotspot, LanguageStat, LanguageStats,
+        RepositoryFile,
     },
-    infrastructure::database::{
-        models::file_change::{
-            CommitFileStat as DatabaseCommitFileStat, FileHotspot as DatabaseFileHotspot,
-            RepositoryFile as DatabaseRepositoryFile,
+    infrastructure::{
+        database::{
+            models::file_change::{
+                CommitFileStat as DatabaseCommitFileStat, FileHotspot as DatabaseFileHotspot,
+                RepositoryFile as DatabaseRepositoryFile,
+            },
+            repositories::{file_stats, repositories, repository_files},
         },
-        repositories::{file_stats, repository_files},
+        filesystem,
     },
 };
 
@@ -177,6 +184,67 @@ fn sort_tree(tree: &mut Vec<FileTreeNode>) {
     }
 }
 
+pub fn get_repository_file_content(
+    conn: &Connection,
+    repo_id: i64,
+    file_path: &str,
+) -> DomainResult<FileData> {
+    let relative = Path::new(file_path);
+    if relative.is_absolute()
+        || relative
+            .components()
+            .any(|c| matches!(c, Component::ParentDir))
+    {
+        return Err(DomainError::InvalidFilePath("Invalid file path".into()));
+    }
+
+    let repo_path = repositories::get_repository_path(conn, repo_id)
+        .map_err(|error| file_database_error("load repository path", error))?
+        .ok_or_else(|| DomainError::InvalidRepository("Repository not found".into()))?;
+
+    let absolute_file_path = PathBuf::from(repo_path).join(relative);
+
+    let file_content = filesystem::get_repository_file_content(&absolute_file_path)
+        .map_err(|e| file_filesystem_error("load repository file content", e))?;
+
+    let mime_type = absolute_file_path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(map_extension_to_mime_type)
+        .unwrap_or("application/octet-stream")
+        .to_string();
+
+    Ok(FileData {
+        mime_type,
+        data: file_content,
+    })
+}
+
+fn map_extension_to_mime_type(extension: &str) -> &'static str {
+    match extension {
+        "rs" => "text/rust",
+        "ts" => "text/typescript",
+        "py" => "text/x-python",
+        "md" => "text/markdown",
+        "json" => "application/json",
+
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+
+        "pdf" => "application/pdf",
+
+        "mp4" => "video/mp4",
+
+        "mp3" => "audio/mpeg",
+
+        "zip" => "application/zip",
+
+        _ => "application/octet-stream", // Default for unknown types
+    }
+}
+
 fn map_repository_file(file: DatabaseRepositoryFile) -> RepositoryFile {
     RepositoryFile {
         id: file.id,
@@ -218,6 +286,10 @@ fn map_file_hotspot(hotspot: DatabaseFileHotspot) -> FileHotspot {
 
 fn file_database_error(action: &str, error: rusqlite::Error) -> DomainError {
     DomainError::InvalidRepository(format!("Failed to {action}: {error}"))
+}
+
+fn file_filesystem_error(action: &str, error: std::io::Error) -> DomainError {
+    DomainError::FileReadError(format!("Failed to {action}: {error}"))
 }
 
 fn map_extension_to_language(extension: &str) -> Option<&'static str> {

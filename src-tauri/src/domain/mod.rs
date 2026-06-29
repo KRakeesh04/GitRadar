@@ -32,6 +32,8 @@ pub enum DomainError {
     AddOrDeleteTrackedRootPathFailed(String),
     EnableTrackedRootPathFailed(String),
     GetTrackedRootPathsFailed(String),
+    FileReadError(String),
+    InvalidFilePath(String),
 }
 
 impl std::fmt::Display for DomainError {
@@ -53,6 +55,8 @@ impl std::fmt::Display for DomainError {
             DomainError::GetTrackedRootPathsFailed(msg) => {
                 write!(f, "Get track root paths failed: {}", msg)
             }
+            DomainError::FileReadError(msg) => write!(f, "File read error: {}", msg),
+            DomainError::InvalidFilePath(msg) => write!(f, "Invalid file path: {}", msg),
         }
     }
 }
