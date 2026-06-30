@@ -2,7 +2,12 @@ use serde::Serialize;
 use tauri::State;
 
 use crate::{
-    domain::Commit, infrastructure::database::connection::get_connection, services::commit_service,
+    domain::Commit,
+    infrastructure::{
+        database::connection::get_connection,
+        git::{CommitDiff, FileDiff},
+    },
+    services::commit_service,
     state::AppState,
 };
 
@@ -70,4 +75,45 @@ pub fn get_commit_by_hash(
     commit_service::get_commit_by_hash(&conn, repo_id, &hash)
         .map(CommitResponse::from)
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_commit_diff(
+    repo_id: i64,
+    commit_hash: String,
+    state: State<'_, AppState>,
+) -> Result<CommitDiff, String> {
+    let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
+    commit_service::get_commit_diff(&conn, repo_id, &commit_hash).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_file_diff(
+    repo_id: i64,
+    commit_hash: String,
+    file_path: String,
+    state: State<'_, AppState>,
+) -> Result<FileDiff, String> {
+    let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
+    commit_service::get_file_diff_by_commit_hash(&conn, repo_id, &commit_hash, &file_path)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_file_diff_history(
+    repo_id: i64,
+    file_path: String,
+    commit_count: Option<usize>,
+    commit_offset: Option<usize>,
+    state: State<'_, AppState>,
+) -> Result<Vec<FileDiff>, String> {
+    let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
+    commit_service::get_file_diff_history(
+        &conn,
+        repo_id,
+        &file_path,
+        commit_count.unwrap_or(10),
+        commit_offset.unwrap_or(0),
+    )
+    .map_err(|e| e.to_string())
 }

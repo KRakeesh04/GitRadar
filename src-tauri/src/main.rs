@@ -48,6 +48,9 @@ fn main() {
             // Commit commands
             commands::commits::get_commits,
             commands::commits::get_commit_by_hash,
+            commands::commits::get_commit_diff,
+            commands::commits::get_file_diff,
+            commands::commits::get_file_diff_history,
             // File commands
             commands::files::get_repository_files,
             commands::files::get_repository_file_by_path,
