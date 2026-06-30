@@ -293,3 +293,5 @@ fn delta_key(delta: &git2::DiffDelta<'_>) -> String {
             .unwrap_or_default(),
     )
 }
+
+// pub fn get_commit_diff()

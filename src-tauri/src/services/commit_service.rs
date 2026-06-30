@@ -50,6 +50,9 @@ pub fn get_commit_graph(
         .collect()
 }
 
+// TODO: pub fn get_commit_diff() to show all files changed in a commit with the diff of each file
+
+// TODO: pub fn get_file_patch() to show the full version history of a file with commit hashes
 
 fn map_commit(commit: DatabaseCommit) -> DomainResult<Commit> {
     let parent_count = u32::try_from(commit.parent_count).map_err(|_| {
