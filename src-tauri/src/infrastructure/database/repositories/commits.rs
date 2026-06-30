@@ -210,3 +210,30 @@ pub fn get_commit_graph(
 
     commits.collect()
 }
+
+pub fn get_commit_hashes_by_repo_and_file(
+    conn: &Connection,
+    repo_id: i64,
+    file_path: &str,
+    count: usize,
+    offset: usize,
+) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT DISTINCT c.hash
+        FROM commits c
+        JOIN commit_file_stats fs ON fs.repo_id = c.repo_id AND fs.commit_hash = c.hash
+        WHERE c.repo_id = ? AND fs.file_path = ?
+        ORDER BY c.committed_at DESC
+        LIMIT ? OFFSET ?
+        "#,
+    )?;
+    let commit_hashes =
+        stmt.query_map(params![repo_id, file_path, count, offset], |row| row.get(0))?;
+
+    let mut result = Vec::new();
+    for commit_hash in commit_hashes {
+        result.push(commit_hash?);
+    }
+    Ok(result)
+}

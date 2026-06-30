@@ -97,6 +97,7 @@ pub enum ChangeType {
     Modified,
     Deleted,
     Renamed,
+    Copied,
 }
 
 impl ChangeType {
@@ -106,6 +107,7 @@ impl ChangeType {
             ChangeType::Modified => "Modified",
             ChangeType::Deleted => "Deleted",
             ChangeType::Renamed => "Renamed",
+            ChangeType::Copied => "Copied",
         }
     }
 }
@@ -114,16 +116,49 @@ pub fn change_type(status: git2::Delta) -> ChangeType {
     match status {
         git2::Delta::Added => ChangeType::Added,
         git2::Delta::Deleted => ChangeType::Deleted,
-        git2::Delta::Renamed | git2::Delta::Copied => ChangeType::Renamed,
+        git2::Delta::Renamed => ChangeType::Renamed,
+        git2::Delta::Copied => ChangeType::Copied,
         git2::Delta::Modified | git2::Delta::Typechange => ChangeType::Modified,
         _ => ChangeType::Modified,
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct FilePatch {
-    pub file_path: String,
+pub struct CommitDiff {
+    pub commit_hash: String,
+    pub files: Vec<FileDiff>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct FileDiff {
     pub old_path: Option<String>,
+    pub new_path: String,
     pub change_type: ChangeType,
-    pub patch: String,
+    pub additions: i32,
+    pub deletions: i32,
+    pub hunks: Vec<DiffHunk>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DiffHunk {
+    pub old_start: i32,
+    pub old_lines: i32,
+    pub new_start: i32,
+    pub new_lines: i32,
+    pub lines: Vec<DiffLine>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DiffLine {
+    pub line_type: DiffLineType,
+    pub old_line_number: Option<u32>,
+    pub new_line_number: Option<u32>,
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+pub enum DiffLineType {
+    Context,
+    Added,
+    Removed,
 }

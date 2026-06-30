@@ -2,9 +2,13 @@ use rusqlite::Connection;
 
 use crate::{
     domain::{commit::CommitGraphNode, Commit, DomainError, DomainResult},
-    infrastructure::database::{
-        models::commit::Commit as DatabaseCommit,
-        models::commit::CommitGraphNode as DatabaseCommitGraphNode, repositories::commits,
+    infrastructure::{
+        database::{
+            models::commit::Commit as DatabaseCommit,
+            models::commit::CommitGraphNode as DatabaseCommitGraphNode,
+            repositories::{commits, repositories},
+        },
+        git::{self, CommitDiff, FileDiff},
     },
 };
 
@@ -50,9 +54,61 @@ pub fn get_commit_graph(
         .collect()
 }
 
-// TODO: pub fn get_commit_diff() to show all files changed in a commit with the diff of each file
+pub fn get_commit_diff(
+    conn: &Connection,
+    repo_id: i64,
+    commit_hash: &str,
+) -> DomainResult<CommitDiff> {
+    let repo_path = get_repo_path(conn, repo_id)?;
 
-// TODO: pub fn get_file_patch() to show the full version history of a file with commit hashes
+    git::file::get_commit_diff(&repo_path, commit_hash).map_err(DomainError::InvalidCommit)
+}
+
+pub fn get_file_diff_by_commit_hash(
+    conn: &Connection,
+    repo_id: i64,
+    commit_hash: &str,
+    file_path: &str,
+) -> DomainResult<FileDiff> {
+    let repo_path = get_repo_path(conn, repo_id)?;
+
+    git::file::get_file_diff(&repo_path, commit_hash, file_path).map_err(DomainError::InvalidCommit)
+}
+
+pub fn get_file_diff_history(
+    conn: &Connection,
+    repo_id: i64,
+    file_path: &str,
+    commit_count: usize,
+    commit_offset: usize,
+) -> DomainResult<Vec<FileDiff>> {
+    let repo_path = get_repo_path(conn, repo_id)?;
+
+    let comit_hashes = commits::get_commit_hashes_by_repo_and_file(
+        conn,
+        repo_id,
+        file_path,
+        commit_count,
+        commit_offset,
+    )
+    .map_err(|error| {
+        DomainError::InvalidCommit(format!(
+            "Failed to load commit hashes for file '{file_path}': {error}"
+        ))
+    })?;
+
+    let mut file_diffs = Vec::with_capacity(comit_hashes.len());
+    for commit_hash in comit_hashes {
+        let file_diff = git::file::get_file_diff(&repo_path, &commit_hash, file_path).map_err(|error| {
+            DomainError::InvalidCommit(format!(
+                "Failed to load file diff for commit '{commit_hash}' and file '{file_path}': {error}"
+            ))
+        })?;
+        file_diffs.push(file_diff);
+    }
+
+    Ok(file_diffs)
+}
 
 fn map_commit(commit: DatabaseCommit) -> DomainResult<Commit> {
     let parent_count = u32::try_from(commit.parent_count).map_err(|_| {
@@ -97,4 +153,16 @@ fn map_commit_graph_node(node: DatabaseCommitGraphNode) -> DomainResult<CommitGr
 
 fn commit_database_error(action: &str, error: rusqlite::Error) -> DomainError {
     DomainError::InvalidCommit(format!("Failed to {action}: {error}"))
+}
+
+fn get_repo_path(conn: &Connection, repo_id: i64) -> DomainResult<String> {
+    match repositories::get_repository_by_id(conn, repo_id) {
+        Ok(Some(repo)) => Ok(repo.path),
+        Ok(None) => Err(DomainError::InvalidRepository(
+            "Repository not found".into(),
+        )),
+        Err(error) => Err(DomainError::InvalidRepository(format!(
+            "Failed to load repository: {error}"
+        ))),
+    }
 }
