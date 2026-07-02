@@ -64,8 +64,20 @@ fn main() {
             // commands::analytics::get_contributors,
             // commands::analytics::get_top_contributors,
             // commands::analytics::get_contributor_by_email,
-            // // Sync commands
-            // commands::sync::calculate_repository_metrics,
+            // Sync commands
+            commands::sync::sync_repository,
+            commands::sync::sync_branches,
+            commands::sync::sync_commits,
+            commands::sync::sync_contributors,
+            commands::sync::sync_repository_files,
+            commands::sync::sync_commit_file_stats,
+            commands::sync::sync_repo_activity,
+            commands::sync::sync_working_tree_status,
+            commands::sync::sync_repository_health,
+            commands::sync::sync_file_hotspots,
+            commands::sync::get_indexing_jobs_by_repo,
+            commands::sync::get_pending_indexing_jobs,
+            commands::sync::cleanup_completed_indexing_jobs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri app");
