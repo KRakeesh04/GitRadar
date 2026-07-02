@@ -205,6 +205,9 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_commit_file_stats_file
             ON commit_file_stats(repo_id, file_path);
 
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_commit_file_stats_unique
+            ON commit_file_stats(repo_id, commit_hash, file_path);
+
         ------------------------------------------------------------
         -- WORKING TREE SUMMARY
         ------------------------------------------------------------

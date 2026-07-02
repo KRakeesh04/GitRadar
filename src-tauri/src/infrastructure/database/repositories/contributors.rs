@@ -1,7 +1,7 @@
 use crate::infrastructure::database::models::contributor::Contributor;
 use rusqlite::{params, Connection, Result};
 
-pub fn insert_contributor(
+pub fn upsert_contributor(
     conn: &Connection,
     repo_id: i64,
     author_name: &str,
@@ -17,42 +17,17 @@ pub fn insert_contributor(
         r#"
         INSERT INTO contributors (
             repo_id, author_name, author_email, commit_count, additions, deletions, active_days, last_commit_at, updated_at
-        ) 
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
-        "#, 
-        params![
-            repo_id, 
-            author_name, 
-            author_email, 
-            commit_count, 
-            additions, 
-            deletions, 
-            active_days, 
-            last_commit_at, 
-            updated_at
-        ],
-    )?;
-    Ok(conn.last_insert_rowid())
-}
-
-pub fn upsert_contributor(
-    conn: &Connection,
-    repo_id: i64,
-    author_name: &str,
-    author_email: Option<&str>,
-    commit_count: i32,
-    additions: i32,
-    deletions: i32,
-    active_days: i32,
-    last_commit_at: Option<&str>,
-) -> Result<i64> {
-    let updated_at = chrono::Utc::now().to_rfc3339();
-    conn.execute(
-        r#"
-        INSERT OR REPLACE INTO contributors (
-            repo_id, author_name, author_email, commit_count, additions, deletions, active_days, last_commit_at, updated_at
         )
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+        ON CONFLICT(repo_id, author_email)
+        DO UPDATE SET
+            author_name = excluded.author_name,
+            commit_count = excluded.commit_count,
+            additions = excluded.additions,
+            deletions = excluded.deletions,
+            active_days = excluded.active_days,
+            last_commit_at = excluded.last_commit_at,
+            updated_at = excluded.updated_at
         "#, 
         params![
             repo_id, 

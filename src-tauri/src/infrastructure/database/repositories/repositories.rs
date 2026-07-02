@@ -68,6 +68,35 @@ pub fn upsert_repository(
     Ok(())
 }
 
+pub fn update_repository_sync_state(
+    conn: &Connection,
+    repo_id: i64,
+    last_scanned_at: Option<&str>,
+    last_indexed_at: Option<&str>,
+    index_status: Option<&str>,
+) -> Result<()> {
+    conn.execute(
+        r#"
+        UPDATE repositories
+        SET
+            last_scanned_at = ?1,
+            last_indexed_at = ?2,
+            index_status = ?3,
+            updated_at = ?4
+        WHERE id = ?5
+        "#,
+        params![
+            last_scanned_at,
+            last_indexed_at,
+            index_status,
+            chrono::Utc::now().to_rfc3339(),
+            repo_id
+        ],
+    )?;
+
+    Ok(())
+}
+
 pub fn get_repository_by_id(conn: &Connection, id: i64) -> Result<Option<RepositorySummary>> {
     let mut stmt = conn.prepare(
         "SELECT id, root_id, name, path, git_dir_path, repo_type, remote_url, default_branch, head_branch,

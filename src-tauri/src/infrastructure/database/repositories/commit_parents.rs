@@ -19,12 +19,14 @@ pub fn insert_commit_parent(
     Ok(conn.last_insert_rowid())
 }
 
-pub fn insert_commit_parents_batch(
+pub fn upsert_commit_parents_batch(
     conn: &Connection,
     repo_id: i64,
     commit_hash: &str,
     parent_hashes: &[String],
 ) -> Result<()> {
+    delete_commit_parents(conn, repo_id, commit_hash)?;
+
     for (index, parent_hash) in parent_hashes.iter().enumerate() {
         insert_commit_parent(conn, repo_id, commit_hash, parent_hash, index as i32)?;
     }

@@ -1,7 +1,7 @@
 use crate::infrastructure::database::models::IndexingJob;
 use rusqlite::{params, Connection, Result};
 
-pub fn insert_indexing_job(conn: &Connection, repo_id: i64, job_type: &str) -> Result<i64> {
+pub fn create_indexing_job(conn: &Connection, repo_id: i64, job_type: &str) -> Result<i64> {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
         r#"
@@ -14,6 +14,19 @@ pub fn insert_indexing_job(conn: &Connection, repo_id: i64, job_type: &str) -> R
         params![repo_id, job_type, "pending", 0, None::<i32>, 0, now, now],
     )?;
     Ok(conn.last_insert_rowid())
+}
+
+pub fn mark_indexing_job_started(conn: &Connection, job_id: i64) -> Result<()> {
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        r#"
+        UPDATE indexing_jobs
+        SET status = 'running', started_at = COALESCE(started_at, ?1), updated_at = ?1
+        WHERE id = ?2
+        "#,
+        params![now, job_id],
+    )?;
+    Ok(())
 }
 
 pub fn update_indexing_job_progress(
@@ -77,6 +90,14 @@ pub fn update_indexing_job_status(
         )?;
     }
     Ok(())
+}
+
+pub fn complete_indexing_job(conn: &Connection, job_id: i64) -> Result<()> {
+    update_indexing_job_status(conn, job_id, "completed", None)
+}
+
+pub fn fail_indexing_job(conn: &Connection, job_id: i64, error_message: &str) -> Result<()> {
+    update_indexing_job_status(conn, job_id, "failed", Some(error_message))
 }
 
 pub fn get_indexing_job(conn: &Connection, job_id: i64) -> Result<Option<IndexingJob>> {
@@ -191,4 +212,8 @@ pub fn delete_old_indexing_jobs(conn: &Connection, days_old: i32) -> Result<i64>
         params![cutoff_str],
     )?;
     Ok(result as i64)
+}
+
+pub fn cleanup_completed_indexing_jobs(conn: &Connection, days_old: i32) -> Result<i64> {
+    delete_old_indexing_jobs(conn, days_old)
 }

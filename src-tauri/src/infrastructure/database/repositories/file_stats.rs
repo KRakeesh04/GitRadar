@@ -3,7 +3,7 @@ use crate::infrastructure::database::models::file_change::CommitFileStat;
 use crate::infrastructure::database::models::file_change::FileHotspot;
 use rusqlite::{params, Connection, Result};
 
-pub fn insert_commit_file_stat(
+pub fn upsert_commit_file_stat(
     conn: &Connection,
     repo_id: i64,
     commit_hash: &str,
@@ -18,6 +18,12 @@ pub fn insert_commit_file_stat(
             repo_id, commit_hash, file_path, change_type, additions, deletions, total_changes
         )
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        ON CONFLICT(repo_id, commit_hash, file_path)
+        DO UPDATE SET
+            change_type = excluded.change_type,
+            additions = excluded.additions,
+            deletions = excluded.deletions,
+            total_changes = excluded.total_changes
         "#,
         params![
             repo_id,
@@ -100,7 +106,7 @@ pub fn delete_file_stats(conn: &Connection, repo_id: i64) -> Result<()> {
     Ok(())
 }
 
-pub fn insert_file_hotspot(
+pub fn upsert_file_hotspot(
     conn: &Connection,
     repo_id: i64,
     file_path: &str,
@@ -112,10 +118,17 @@ pub fn insert_file_hotspot(
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
         r#"
-        INSERT OR REPLACE INTO file_hotspots (
+        INSERT INTO file_hotspots (
             repo_id, file_path, touch_count, churn_score, hotspot_score, last_touched_at, updated_at
         ) 
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        ON CONFLICT(repo_id, file_path)
+        DO UPDATE SET
+            touch_count = excluded.touch_count,
+            churn_score = excluded.churn_score,
+            hotspot_score = excluded.hotspot_score,
+            last_touched_at = excluded.last_touched_at,
+            updated_at = excluded.updated_at
         "#,
         params![
             repo_id,

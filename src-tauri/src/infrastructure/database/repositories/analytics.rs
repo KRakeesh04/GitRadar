@@ -14,9 +14,15 @@ pub fn insert_repo_activity_daily(
 ) -> Result<()> {
     conn.execute(
         r#"
-        INSERT OR REPLACE INTO repo_activity_daily (
+        INSERT INTO repo_activity_daily (
             repo_id, activity_date, commit_count, additions, deletions, files_changed
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+        ON CONFLICT(repo_id, activity_date)
+        DO UPDATE SET
+            commit_count = excluded.commit_count,
+            additions = excluded.additions,
+            deletions = excluded.deletions,
+            files_changed = excluded.files_changed
         "#,
         params![
             repo_id,

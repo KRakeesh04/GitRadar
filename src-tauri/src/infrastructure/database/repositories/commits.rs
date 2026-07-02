@@ -1,7 +1,7 @@
 use crate::infrastructure::database::models::commit::{Commit, CommitGraphNode};
 use rusqlite::{params, Connection, Result};
 
-pub fn insert_commit(
+pub fn upsert_commit(
     conn: &Connection,
     repo_id: i64,
     hash: &str,
@@ -23,6 +23,16 @@ pub fn insert_commit(
             body, parent_count, committed_at, inserted_at
         ) 
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+        ON CONFLICT(repo_id, hash)
+        DO UPDATE SET
+            author_name = excluded.author_name,
+            author_email = excluded.author_email,
+            committer_name = excluded.committer_name,
+            committer_email = excluded.committer_email,
+            subject = excluded.subject,
+            body = excluded.body,
+            parent_count = excluded.parent_count,
+            committed_at = excluded.committed_at
         "#,
         params![
             repo_id,
@@ -40,7 +50,7 @@ pub fn insert_commit(
     )?;
     let commit_id = conn.last_insert_rowid();
     if !parent_hashes.is_empty() {
-        super::commit_parents::insert_commit_parents_batch(conn, repo_id, hash, parent_hashes)?;
+        super::commit_parents::upsert_commit_parents_batch(conn, repo_id, hash, parent_hashes)?;
     }
     Ok(commit_id)
 }

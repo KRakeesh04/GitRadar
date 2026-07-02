@@ -43,10 +43,17 @@ pub fn upsert_repository_file(
 ) -> Result<i64> {
     conn.execute(
         r#"
-        INSERT OR REPLACE INTO repository_files (
+        INSERT INTO repository_files (
             repo_id, file_path, file_name, extension, size_bytes, is_binary, last_modified_at
         )
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        ON CONFLICT(repo_id, file_path)
+        DO UPDATE SET
+            file_name = excluded.file_name,
+            extension = excluded.extension,
+            size_bytes = excluded.size_bytes,
+            is_binary = excluded.is_binary,
+            last_modified_at = excluded.last_modified_at
         "#,
         params![
             repo_id,

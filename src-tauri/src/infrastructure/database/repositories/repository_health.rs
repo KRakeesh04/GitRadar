@@ -12,10 +12,17 @@ pub fn upsert_repository_health(
     let last_check_at = chrono::Utc::now().to_rfc3339();
     conn.execute(
         r#"
-        INSERT OR REPLACE INTO repository_health (
+        INSERT INTO repository_health (
             repo_id, health_score, issues_count, warnings_count, check_status, last_check_at
         )
         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+        ON CONFLICT(repo_id)
+        DO UPDATE SET
+            health_score = excluded.health_score,
+            issues_count = excluded.issues_count,
+            warnings_count = excluded.warnings_count,
+            check_status = excluded.check_status,
+            last_check_at = excluded.last_check_at
         "#,
         params![
             repo_id,
