@@ -1,7 +1,7 @@
 use crate::infrastructure::database::models::branch::Branch;
 use rusqlite::{params, Connection, Result};
 
-pub fn insert_branch(
+pub fn upsert_branch(
     conn: &Connection,
     repo_id: i64,
     name: &str,
@@ -21,6 +21,17 @@ pub fn insert_branch(
             repo_id, name, is_head, is_default, last_commit_hash, last_commit_at, ahead_count_from_default,
             behind_count_from_default, ahead_count_from_remote, behind_count_from_remote, updated_at
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+        ON CONFLICT(repo_id, name)
+        DO UPDATE SET
+            is_head = excluded.is_head,
+            is_default = excluded.is_default,
+            last_commit_hash = excluded.last_commit_hash,
+            last_commit_at = excluded.last_commit_at,
+            ahead_count_from_default = excluded.ahead_count_from_default,
+            behind_count_from_default = excluded.behind_count_from_default,
+            ahead_count_from_remote = excluded.ahead_count_from_remote,
+            behind_count_from_remote = excluded.behind_count_from_remote,
+            updated_at = excluded.updated_at
         "#,
         params![
             repo_id, 
@@ -105,7 +116,7 @@ pub fn get_or_create_branch(
     if let Some(branch) = get_branch_by_name(conn, repo_id, name)? {
         Ok((branch.id, false))
     } else {
-        let id = insert_branch(conn, repo_id, name, false, false, None, None, 0, 0, 0, 0)?;
+        let id = upsert_branch(conn, repo_id, name, false, false, None, None, 0, 0, 0, 0)?;
         Ok((id, true))
     }
 }

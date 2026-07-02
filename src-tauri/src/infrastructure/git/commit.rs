@@ -120,8 +120,7 @@ pub fn last_commit_info_by_branch(
 
 pub fn find_ahead_behind_local_vs_remote(
     repo_path: &str,
-    local_branch: &str,
-    remote_branch: &str,
+    branch: &str,
 ) -> Result<(i32, i32), String> {
     if !std::path::Path::new(repo_path).exists() {
         return Err(format!("Repository path '{}' does not exist", repo_path));
@@ -132,24 +131,14 @@ pub fn find_ahead_behind_local_vs_remote(
         Err(e) => return Err(format!("Failed to open repository: {}", e)),
     };
 
-    let local_ref = match repo.find_branch(local_branch, git2::BranchType::Local) {
+    let remote_ref = match repo.find_branch(branch, git2::BranchType::Remote) {
         Ok(branch) => branch.into_reference(),
-        Err(e) => {
-            return Err(format!(
-                "Failed to find local branch '{}': {}",
-                local_branch, e
-            ))
-        }
+        Err(e) => return Err(format!("Failed to find remote branch '{}': {}", branch, e)),
     };
 
-    let remote_ref = match repo.find_branch(remote_branch, git2::BranchType::Remote) {
+    let local_ref = match repo.find_branch(branch, git2::BranchType::Local) {
         Ok(branch) => branch.into_reference(),
-        Err(e) => {
-            return Err(format!(
-                "Failed to find remote branch '{}': {}",
-                remote_branch, e
-            ))
-        }
+        Err(_) => remote_ref.clone(), // If local branch doesn't exist, use remote ref for comparison
     };
 
     let (ahead, behind) =
@@ -161,10 +150,15 @@ pub fn find_ahead_behind_local_vs_remote(
     Ok((ahead, behind))
 }
 
-pub fn find_ahead_behind_head_vs_default(
+pub fn find_ahead_behind_given_vs_default(
     repo_path: &str,
     default_branch: &str,
+    given_branch: &str,
 ) -> Result<(i32, i32), String> {
+    if default_branch == given_branch {
+        return Ok((0, 0));
+    }
+
     if !std::path::Path::new(repo_path).exists() {
         return Err(format!("Repository path '{}' does not exist", repo_path));
     }
@@ -174,9 +168,14 @@ pub fn find_ahead_behind_head_vs_default(
         Err(e) => return Err(format!("Failed to open repository: {}", e)),
     };
 
-    let head_ref = match repo.head() {
-        Ok(head) => head,
-        Err(e) => return Err(format!("Failed to get HEAD reference: {}", e)),
+    let given_ref = match repo.find_branch(given_branch, git2::BranchType::Local) {
+        Ok(branch) => branch.into_reference(),
+        Err(e) => {
+            return Err(format!(
+                "Failed to find given branch '{}': {}",
+                given_branch, e
+            ))
+        }
     };
 
     let default_ref = match repo.find_branch(default_branch, git2::BranchType::Local) {
@@ -190,7 +189,7 @@ pub fn find_ahead_behind_head_vs_default(
     };
 
     let (ahead, behind) =
-        match repo.graph_ahead_behind(head_ref.target().unwrap(), default_ref.target().unwrap()) {
+        match repo.graph_ahead_behind(given_ref.target().unwrap(), default_ref.target().unwrap()) {
             Ok((ahead, behind)) => (ahead as i32, behind as i32),
             Err(e) => return Err(format!("Failed to calculate ahead/behind: {}", e)),
         };

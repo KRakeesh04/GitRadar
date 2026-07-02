@@ -6,7 +6,10 @@ use crate::{
         repository::RepositoryCalculatedMetrics, ActivityLevel, DomainError, DomainResult,
         HealthScore,
     },
-    infrastructure::database::repositories::repositories,
+    infrastructure::{
+        database::repositories::{branches, repositories},
+        git,
+    },
 };
 
 pub fn calculate_repository_metrics(
@@ -56,3 +59,75 @@ pub fn calculate_repository_metrics(
         activity_level: ActivityLevel::from_weekly_commits(weekly_commits),
     })
 }
+
+// TODO-01: discover branches and store in db
+pub fn sync_repository(conn: &Connection, repo_id: i64) -> DomainResult<()> {
+    sync_branches(conn, repo_id)
+}
+
+pub fn sync_branches(conn: &Connection, repo_id: i64) -> DomainResult<()> {
+    let repo_path = match repositories::get_repository_path(conn, repo_id) {
+        Ok(Some(path)) => path,
+        Ok(None) => {
+            return Err(DomainError::InvalidRepository(
+                "Repository Not Found".into(),
+            ))
+        }
+        Err(error) => {
+            return Err(DomainError::InvalidRepository(format!(
+                "Failed to load repo path: {error}"
+            )))
+        }
+    };
+
+    let branches = match git::branch::get_branches(&repo_path) {
+        Ok(br) => br,
+        Err(error) => {
+            return Err(DomainError::InvalidBranch(format!(
+                "Failed to find branches from git2 : {error}"
+            )))
+        }
+    };
+
+    let repo_info = git::repo::get_repository_info(&repo_path).unwrap();
+    let default_branch = repo_info.default_branch.unwrap_or("".into());
+    for branch in branches {
+        let is_default = branch.name == default_branch;
+        let last_commit =
+            git::commit::last_commit_info_by_branch(&repo_path, &branch.name).unwrap();
+        let ahead_behind_from_default = if is_default {
+            git::commit::find_ahead_behind_given_vs_default(
+                &repo_path,
+                &default_branch,
+                &branch.name,
+            )
+            .unwrap()
+        } else {
+            (0, 0)
+        };
+        let ahead_behind_from_remote =
+            git::commit::find_ahead_behind_local_vs_remote(&repo_path, &branch.name).unwrap();
+
+        branches::upsert_branch(
+            conn,
+            repo_id,
+            &branch.name,
+            branch.is_head,
+            is_default,
+            Some(last_commit.hash.as_str()),
+            Some(last_commit.committed_at.as_str()),
+            ahead_behind_from_default.0,
+            ahead_behind_from_default.1,
+            ahead_behind_from_remote.0,
+            ahead_behind_from_remote.1,
+        )
+        .map_err(|e| DomainError::InvalidBranch(format!("Failed to upsert branch in db: {e}")))?;
+    }
+
+    Ok(())
+}
+// TODO-02: discover commits and store in db and update commits stats in db
+// TODO-03: discover contributors and store in db
+// TODO-04: discover repo files and store meta data in db
+// TODO-05: update working_tree_status in db
+// TODO-06: repository_health, repo_activity_daily, file_hotspots details and store them in db
