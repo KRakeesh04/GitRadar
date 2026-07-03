@@ -12,10 +12,9 @@ pub mod setting;
 pub mod tracked_root;
 pub mod working_tree;
 
-pub use analytics::{RepoActivityDaily, RepoSummary};
+pub use analytics::RepoActivityDaily;
 pub use audit_log::AuditLog;
-pub use file_change::{CommitFileStat, FileHotspot, RepositoryFile};
+pub use file_change::RepositoryFile;
 pub use indexing_job::IndexingJob;
-pub use repository::Repository;
 pub use repository_health::RepositoryHealth;
 pub use tracked_root::{TrackIgnoreRoot, TrackedRoot};

@@ -6,7 +6,7 @@ pub struct HealthScore(f32);
 impl HealthScore {
     // Create a new health score with validation (0.0 to 1.0)
     pub fn new(score: f32) -> Result<Self, String> {
-        if score < 0.0 || score > 1.0 {
+        if !(0.0..=1.0).contains(&score) {
             return Err("Health score must be between 0.0 and 1.0".to_string());
         }
         Ok(HealthScore(score))

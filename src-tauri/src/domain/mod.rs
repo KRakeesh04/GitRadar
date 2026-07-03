@@ -8,7 +8,7 @@ pub mod value_objects;
 
 // Re-export commonly used domain types
 pub use branch::{Branch, BranchType};
-pub use commit::{Commit, CommitInfo};
+pub use commit::Commit;
 pub use contributor::Contributor;
 pub use file::{
     CommitFileStat, FileHotspot, LanguageStat, LanguageStats, RepositoryActivityDaily,

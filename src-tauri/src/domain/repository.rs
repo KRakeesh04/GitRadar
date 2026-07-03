@@ -37,7 +37,7 @@ impl Repository {
         head_branch: Option<String>,
     ) -> DomainResult<Self> {
         let repo_id =
-            RepositoryId::new(id).map_err(|e| super::DomainError::InvalidRepository(e))?;
+            RepositoryId::new(id).map_err(super::DomainError::InvalidRepository)?;
 
         Ok(Repository {
             id: repo_id,
