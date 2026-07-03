@@ -11,8 +11,8 @@ const config = defineConfig({
   plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
   server: {
     port: 1420,
-    strictPort: true
-  }
+    strictPort: true,
+  },
 });
 
 export default config;
