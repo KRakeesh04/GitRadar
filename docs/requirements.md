@@ -21,11 +21,11 @@ The primary goal is to provide a fast and secure Git intelligence dashboard for 
 
 The user shall be able to:
 
-* Add one or more root folders.
-* Edit tracked root folders.
-* Remove tracked root folders.
-* Enable or disable tracked root folders.
-* Trigger manual rescans.
+- Add one or more root folders.
+- Edit tracked root folders.
+- Remove tracked root folders.
+- Enable or disable tracked root folders.
+- Trigger manual rescans.
 
 Examples:
 
@@ -74,12 +74,12 @@ All roots shall be indexed independently.
 
 The system shall:
 
-* Discover repositories recursively.
-* Detect valid Git repositories.
-* Ignore invalid .git directories.
-* Detect deleted repositories.
-* Detect moved repositories.
-* Handle symbolic links safely.
+- Discover repositories recursively.
+- Detect valid Git repositories.
+- Ignore invalid .git directories.
+- Detect deleted repositories.
+- Detect moved repositories.
+- Handle symbolic links safely.
 
 ---
 
@@ -87,15 +87,15 @@ The system shall:
 
 Each repository shall expose:
 
-* Name
-* Path
-* Current branch
-* Default branch
-* Last activity time
-* Last indexed time
-* Working tree status
-* Repository size
-* Total commits
+- Name
+- Path
+- Current branch
+- Default branch
+- Last activity time
+- Last indexed time
+- Working tree status
+- Repository size
+- Total commits
 
 ---
 
@@ -105,32 +105,32 @@ Repository detail pages shall display:
 
 ### Repository Overview
 
-* Name
-* Path
-* Current branch
-* Last commit
-* Last activity
-* Health score
+- Name
+- Path
+- Current branch
+- Last commit
+- Last activity
+- Health score
 
 ### Commit History
 
-* Commit graph/tree
-* Branch relationships
-* Merge commits
-* Commit details
+- Commit graph/tree
+- Branch relationships
+- Merge commits
+- Commit details
 
 ### File Explorer
 
-* Repository file tree
-* File preview
-* File metadata
+- Repository file tree
+- File preview
+- File metadata
 
 ### Working Tree
 
-* Modified files
-* Staged files
-* Deleted files
-* Untracked files
+- Modified files
+- Staged files
+- Deleted files
+- Untracked files
 
 ---
 
@@ -138,16 +138,16 @@ Repository detail pages shall display:
 
 The system shall display:
 
-* Commit tree graph
-* Branch graph
-* Merge relationships
-* Commit timeline
+- Commit tree graph
+- Branch graph
+- Merge relationships
+- Commit timeline
 
 Similar to:
 
-* GitKraken
-* SourceTree
-* GitHub Network Graph
+- GitKraken
+- SourceTree
+- GitHub Network Graph
 
 ---
 
@@ -155,20 +155,20 @@ Similar to:
 
 Users shall be able to view:
 
-* Current changes
-* Commit-to-commit differences
-* Branch comparison differences
+- Current changes
+- Commit-to-commit differences
+- Branch comparison differences
 
 Display:
 
-* Added lines
-* Removed lines
-* Modified blocks
+- Added lines
+- Removed lines
+- Modified blocks
 
 Support:
 
-* Side-by-side mode
-* Unified mode
+- Side-by-side mode
+- Unified mode
 
 ---
 
@@ -178,18 +178,18 @@ Dashboard shall display:
 
 ### Global Metrics
 
-* Total repositories
-* Active repositories
-* Total commits
-* Recent activity
+- Total repositories
+- Active repositories
+- Total commits
+- Recent activity
 
 ### Repository Metrics
 
-* Commit frequency
-* Hotspot files
-* Churn score
-* Health score
-* Contributor metrics
+- Commit frequency
+- Hotspot files
+- Churn score
+- Health score
+- Contributor metrics
 
 ---
 
@@ -197,11 +197,11 @@ Dashboard shall display:
 
 Search shall support:
 
-* Repository name
-* File path
-* Branch name
-* Commit message
-* Commit hash
+- Repository name
+- File path
+- Branch name
+- Commit message
+- Commit hash
 
 ---
 
@@ -209,11 +209,11 @@ Search shall support:
 
 Synchronization shall run only when:
 
-* Application is running.
+- Application is running.
 
 Synchronization shall stop when:
 
-* Application closes.
+- Application closes.
 
 No background daemon shall exist in MVP.
 
@@ -223,9 +223,9 @@ No background daemon shall exist in MVP.
 
 The system shall:
 
-* Index only changed repositories.
-* Avoid full rescans whenever possible.
-* Recompute analytics incrementally.
+- Index only changed repositories.
+- Avoid full rescans whenever possible.
+- Recompute analytics incrementally.
 
 ---
 
@@ -233,10 +233,10 @@ The system shall:
 
 Users shall be able to modify:
 
-* Root paths
-* Scan settings
-* Refresh intervals
-* Analytics preferences
+- Root paths
+- Scan settings
+- Refresh intervals
+- Analytics preferences
 
 Without restarting the application.
 
@@ -282,9 +282,9 @@ Target:
 
 SQLite queries shall use:
 
-* Indexed columns
-* Prepared statements
-* Pagination
+- Indexed columns
+- Prepared statements
+- Pagination
 
 ---
 
@@ -310,10 +310,10 @@ The application shall never scan arbitrary directories.
 
 Future terminal features:
 
-* Pull
-* Push
-* Fetch
-* Merge
+- Pull
+- Push
+- Fetch
+- Merge
 
 Must be executed through a restricted command layer.
 
@@ -325,9 +325,9 @@ Direct shell execution is prohibited.
 
 The application shall never:
 
-* Read .env values for analytics.
-* Upload repository contents.
-* Store credentials.
+- Read .env values for analytics.
+- Upload repository contents.
+- Store credentials.
 
 ---
 
@@ -335,9 +335,9 @@ The application shall never:
 
 SQLite shall use:
 
-* WAL mode
-* Foreign keys enabled
-* Transaction protection
+- WAL mode
+- Foreign keys enabled
+- Transaction protection
 
 ---
 
@@ -353,10 +353,10 @@ Large binary files shall be excluded.
 
 Security-sensitive actions shall be logged:
 
-* Root addition
-* Root removal
-* Settings changes
-* Future Git operations
+- Root addition
+- Root removal
+- Settings changes
+- Future Git operations
 
 ---
 
@@ -366,10 +366,10 @@ Security-sensitive actions shall be logged:
 
 Display:
 
-* Coding hours
-* Daily activity
-* Weekly activity
-* Project duration analytics
+- Coding hours
+- Daily activity
+- Weekly activity
+- Project duration analytics
 
 ---
 
@@ -379,15 +379,15 @@ Restricted terminal panel:
 
 Allowed:
 
-* git pull
-* git push
-* git fetch
-* git merge
-* git checkout
+- git pull
+- git push
+- git fetch
+- git merge
+- git checkout
 
 Blocked:
 
-* Arbitrary shell execution
+- Arbitrary shell execution
 
 ---
 
@@ -395,9 +395,9 @@ Blocked:
 
 Support:
 
-* JSON
-* CSV
-* PDF
+- JSON
+- CSV
+- PDF
 
 ---
 
@@ -405,9 +405,9 @@ Support:
 
 Future support:
 
-* GitHub
-* GitLab
-* Gitea
+- GitHub
+- GitLab
+- Gitea
 
 ---
 

@@ -13,12 +13,12 @@ Duration:
 
 Deliverables:
 
-* Tauri setup
-* React setup
-* SQLite setup
-* Migration system
-* Routing
-* Settings page
+- Tauri setup
+- React setup
+- SQLite setup
+- Migration system
+- Routing
+- Settings page
 
 Done when:
 
@@ -35,11 +35,11 @@ Duration:
 
 Deliverables:
 
-* Add root folders
-* Edit root folders
-* Delete root folders
-* Repository scanning
-* Repository list page
+- Add root folders
+- Edit root folders
+- Delete root folders
+- Repository scanning
+- Repository list page
 
 Done when:
 
@@ -56,10 +56,10 @@ Duration:
 
 Deliverables:
 
-* Commit indexing
-* Branch indexing
-* Working tree indexing
-* Incremental indexing
+- Commit indexing
+- Branch indexing
+- Working tree indexing
+- Incremental indexing
 
 Done when:
 
@@ -76,10 +76,10 @@ Duration:
 
 Deliverables:
 
-* Total repositories
-* Active repositories
-* Total commits
-* Activity charts
+- Total repositories
+- Active repositories
+- Total commits
+- Activity charts
 
 Done when:
 
@@ -96,10 +96,10 @@ Duration:
 
 Deliverables:
 
-* Overview page
-* Branch list
-* Commit list
-* Health metrics
+- Overview page
+- Branch list
+- Commit list
+- Health metrics
 
 Done when:
 
@@ -116,9 +116,9 @@ Duration:
 
 Deliverables:
 
-* Repository tree
-* File viewer
-* Search
+- Repository tree
+- File viewer
+- Search
 
 Done when:
 
@@ -135,9 +135,9 @@ Duration:
 
 Deliverables:
 
-* Working tree diff
-* Commit diff
-* Unified mode
+- Working tree diff
+- Commit diff
+- Unified mode
 
 Done when:
 
@@ -154,9 +154,9 @@ Duration:
 
 Deliverables:
 
-* Branch graph
-* Merge graph
-* Commit tree visualization
+- Branch graph
+- Merge graph
+- Commit tree visualization
 
 Done when:
 
@@ -173,10 +173,10 @@ Duration:
 
 Deliverables:
 
-* Hotspots
-* Churn
-* Contributors
-* Health score
+- Hotspots
+- Churn
+- Contributors
+- Health score
 
 Done when:
 
@@ -193,10 +193,10 @@ Duration:
 
 Deliverables:
 
-* Audit logs
-* Path validation
-* Sandbox enforcement
-* Large file protection
+- Audit logs
+- Path validation
+- Sandbox enforcement
+- Large file protection
 
 Done when:
 
@@ -238,20 +238,20 @@ v1.0.0
 
 v1.1
 
-* WakaTime
+- WakaTime
 
 v1.2
 
-* Export reports
+- Export reports
 
 v1.3
 
-* Git pull/push/fetch
+- Git pull/push/fetch
 
 v1.4
 
-* GitHub integration
+- GitHub integration
 
 v2.0
 
-* Plugin system
+- Plugin system

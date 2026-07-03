@@ -62,8 +62,8 @@
     ├── repositories/
     └── queries/ -->
 
-
 # Backend Structure
+
 ```
 src-tauri/
 │
@@ -103,9 +103,9 @@ Responsibilities:
 Example:
 
 Frontend
-    ↓
+↓
 Tauri Command
-    ↓
+↓
 RepositoryService
 
 Never:
@@ -114,9 +114,7 @@ Never:
 ✗ Git Commands
 ✗ Business Logic
 
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-2. DOMAIN LAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2. DOMAIN LAYER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Purpose:
@@ -140,10 +138,10 @@ struct Commit
 struct Branch
 
 enum FileStatus {
-    Modified,
-    Staged,
-    Deleted,
-    Untracked
+Modified,
+Staged,
+Deleted,
+Untracked
 }
 
 Responsibilities:
@@ -159,9 +157,7 @@ Never:
 ✗ Filesystem
 ✗ Git access
 
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-3. SERVICES LAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3. SERVICES LAYER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Purpose:
@@ -185,12 +181,11 @@ Responsibilities:
 
 Example:
 
-Load Repository
-+
-Load Commits
-+
+Load Repository +
+Load Commits +
 Load Metrics
 =
+
 Repository Details
 
 Never:
@@ -199,9 +194,7 @@ Never:
 ✗ Tauri APIs
 ✗ Raw filesystem access
 
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-4. INFRASTRUCTURE LAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4. INFRASTRUCTURE LAYER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Purpose:
@@ -218,21 +211,25 @@ Responsibilities:
 
 database/
 -----------
+
 SQLite access
 
 filesystem/
 -----------
+
 Directory scanning
 File reading
 Metadata
 
 git/
 -----
+
 git2 wrapper
 Git command abstraction
 
 cache/
 -------
+
 Memory cache
 Query cache
 
@@ -247,9 +244,7 @@ Never:
 ✗ Business rules
 ✗ Analytics calculations
 
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-5. INDEXING LAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5. INDEXING LAYER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Purpose:
@@ -267,25 +262,30 @@ Responsibilities:
 
 Discovery
 ---------
+
 Find repositories
 
 Repository Indexer
 ------------------
+
 Repository metadata
 
 Commit Indexer
 --------------
+
 Commits
 Branches
 Commit graph
 
 File Indexer
 ------------
+
 File tree
 File metadata
 
 Analytics Indexer
 -----------------
+
 Hotspots
 Churn
 Health metrics
@@ -294,9 +294,7 @@ Produces:
 
 SQLite cached data
 
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-6. SCHEDULER LAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6. SCHEDULER LAYER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Purpose:
@@ -318,18 +316,16 @@ Responsibilities:
 Example:
 
 Filesystem Change
-        ↓
+↓
 Debounce
-        ↓
+↓
 Queue Job
-        ↓
+↓
 Indexer
 
 Runs ONLY while app is open.
 
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-7. SECURITY LAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7. SECURITY LAYER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Purpose:
@@ -346,35 +342,37 @@ Responsibilities:
 
 Path Validation
 ---------------
+
 Prevent traversal attacks
 
 Permissions
 -----------
+
 Validate approved roots
 
 Git Sandbox
 -----------
+
 Allow only approved git commands
 
 Audit Logs
 ----------
+
 Record sensitive actions
 
 Example:
 
 Request File
-      ↓
+↓
 Path Validator
-      ↓
+↓
 Permission Check
-      ↓
+↓
 Read File
 
 Never bypass this layer.
 
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-8. DB LAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8. DB LAYER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Purpose:
@@ -408,21 +406,20 @@ Never:
 ✗ Analytics calculations
 ✗ Git operations
 
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DEPENDENCY RULE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Frontend
-    ↓
+↓
 Commands
-    ↓
+↓
 Services
-    ↓
+↓
 Domain
-    ↓
+↓
 Infrastructure
-    ↓
+↓
 DB
 
 Allowed:
@@ -440,39 +437,46 @@ Domain → DB
 Domain → Git
 Domain → Filesystem
 
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MENTAL MODEL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Commands
 =
+
 API Layer
 
 Domain
 =
+
 Business Objects
 
 Services
 =
+
 Business Logic
 
 Infrastructure
 =
+
 External Systems
 
 Indexing
 =
+
 Background Processing
 
 Scheduler
 =
+
 Job Management
 
 Security
 =
+
 Protection Layer
 
 DB
 =
+
 Persistence Layer

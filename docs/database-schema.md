@@ -8,13 +8,13 @@ Version: 2.0
 
 Goals:
 
-* Fast startup
-* Fast dashboard loading
-* Incremental indexing
-* Commit graph support
-* Secure local storage
-* Analytics caching
-* Future extensibility
+- Fast startup
+- Fast dashboard loading
+- Incremental indexing
+- Commit graph support
+- Secure local storage
+- Analytics caching
+- Future extensibility
 
 ---
 
@@ -193,8 +193,8 @@ Optional preview cache.
 
 Used for:
 
-* file previews
-* search
+- file previews
+- search
 
 | Column          | Type       |
 | --------------- | ---------- |
@@ -462,14 +462,14 @@ Repository file contents are NOT fully stored in SQLite.
 
 Only:
 
-* Metadata
-* Search previews
-* Cached snippets
+- Metadata
+- Search previews
+- Cached snippets
 
 This prevents:
 
-* Database bloat
-* Privacy risks
-* Slow indexing
+- Database bloat
+- Privacy risks
+- Slow indexing
 
 Actual file content should always be read directly from disk when opened.

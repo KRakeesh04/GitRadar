@@ -28,9 +28,9 @@ Indexed commits across all repositories.
 
 Repositories active within:
 
-* 24 hours
-* 7 days
-* 30 days
+- 24 hours
+- 7 days
+- 30 days
 
 ---
 
@@ -40,9 +40,9 @@ Repositories active within:
 
 Commits:
 
-* Daily
-* Weekly
-* Monthly
+- Daily
+- Weekly
+- Monthly
 
 ---
 
@@ -194,10 +194,8 @@ Knowledge concentration indicator.
 
 Formula:
 
-Modified
-+
-Staged
-+
+Modified +
+Staged +
 Untracked
 
 ---
@@ -206,10 +204,10 @@ Untracked
 
 Inputs:
 
-* Stale branches
-* Large commits
-* Hotspots
-* Dirty working tree
+- Stale branches
+- Large commits
+- Hotspots
+- Dirty working tree
 
 Output:
 
@@ -223,10 +221,8 @@ Used on dashboard.
 
 Formula:
 
-Activity Score
-+
-Health Score
-+
+Activity Score +
+Health Score +
 Recent Commit Weight
 
 ---
@@ -235,9 +231,9 @@ Recent Commit Weight
 
 Track:
 
-* Most viewed repositories
-* Most viewed files
-* Most viewed commits
+- Most viewed repositories
+- Most viewed files
+- Most viewed commits
 
 Local only.
 

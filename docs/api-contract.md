@@ -8,11 +8,11 @@ Version: 2.0
 
 All Tauri commands must:
 
-* Return typed responses
-* Never expose internal database structure
-* Return predictable errors
-* Support pagination
-* Support cancellation
+- Return typed responses
+- Never expose internal database structure
+- Return predictable errors
+- Support pagination
+- Support cancellation
 
 ---
 
@@ -125,9 +125,9 @@ Manual discovery.
 
 Supports:
 
-* Search
-* Pagination
-* Filtering
+- Search
+- Pagination
+- Filtering
 
 ```json
 {
@@ -142,9 +142,9 @@ Supports:
 
 Returns:
 
-* Metadata
-* Statistics
-* Activity
+- Metadata
+- Statistics
+- Activity
 
 ```json
 {
@@ -321,10 +321,10 @@ Input
 
 Returns:
 
-* Total repositories
-* Active repositories
-* Commits
-* Activity
+- Total repositories
+- Active repositories
+- Commits
+- Activity
 
 ---
 
@@ -332,10 +332,10 @@ Returns:
 
 Returns:
 
-* Hotspots
-* Churn
-* Health
-* Contributors
+- Hotspots
+- Churn
+- Health
+- Contributors
 
 ---
 
@@ -368,10 +368,10 @@ Input
 
 Searches:
 
-* Repositories
-* Files
-* Branches
-* Commits
+- Repositories
+- Files
+- Branches
+- Commits
 
 ---
 
@@ -409,9 +409,9 @@ Output
 
 Supports:
 
-* Theme
-* Refresh interval
-* Analytics preferences
+- Theme
+- Refresh interval
+- Analytics preferences
 
 ---
 
@@ -454,10 +454,10 @@ Manual sync.
 
 Returns:
 
-* Daily time
-* Weekly time
-* Monthly time
-* Languages
+- Daily time
+- Weekly time
+- Monthly time
+- Languages
 
 ---
 
@@ -498,9 +498,9 @@ All paginated endpoints:
 
 Commands must:
 
-* Validate repository ownership
-* Validate root permissions
-* Prevent path traversal
-* Prevent symlink escapes
-* Sanitize all user input
-* Log security-sensitive operations
+- Validate repository ownership
+- Validate root permissions
+- Prevent path traversal
+- Prevent symlink escapes
+- Sanitize all user input
+- Log security-sensitive operations

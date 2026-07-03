@@ -10,12 +10,12 @@ GitRadar is a Linux-first desktop application designed to discover, index, analy
 
 The architecture prioritizes:
 
-* Fast startup
-* Low latency UI
-* Incremental indexing
-* Secure filesystem access
-* Local-only processing
-* Future extensibility
+- Fast startup
+- Low latency UI
+- Incremental indexing
+- Secure filesystem access
+- Local-only processing
+- Future extensibility
 
 ---
 
@@ -23,50 +23,50 @@ The architecture prioritizes:
 
 ## Frontend
 
-* React
-* TypeScript
-* TanStack Query
-* React Router
-* Zustand
+- React
+- TypeScript
+- TanStack Query
+- React Router
+- Zustand
 
 ---
 
 ## Desktop Layer
 
-* Tauri
+- Tauri
 
 Responsibilities:
 
-* Native window
-* File dialogs
-* OS integration
-* Secure IPC bridge
+- Native window
+- File dialogs
+- OS integration
+- Secure IPC bridge
 
 ---
 
 ## Backend
 
-* Rust
+- Rust
 
 Responsibilities:
 
-* Repository discovery
-* Git indexing
-* Analytics
-* Sync scheduling
-* Security enforcement
+- Repository discovery
+- Git indexing
+- Analytics
+- Sync scheduling
+- Security enforcement
 
 ---
 
 ## Storage
 
-* SQLite
+- SQLite
 
 Modes:
 
-* WAL Enabled
-* Foreign Keys Enabled
-* Prepared Statements Only
+- WAL Enabled
+- Foreign Keys Enabled
+- Prepared Statements Only
 
 ---
 
@@ -163,9 +163,9 @@ Never perform a full repository re-index unless necessary.
 
 Track:
 
-* Last indexed commit
-* Last scan timestamp
-* Changed working tree state
+- Last indexed commit
+- Last scan timestamp
+- Changed working tree state
 
 Only update deltas.
 
@@ -187,9 +187,9 @@ Avoid expensive Git operations during UI rendering.
 
 Responsible for:
 
-* Root scanning
-* Git repository detection
-* Repository registration
+- Root scanning
+- Git repository detection
+- Repository registration
 
 Workflow:
 
@@ -204,9 +204,9 @@ Workflow:
 
 Responsible for:
 
-* Commit indexing
-* Branch indexing
-* Analytics refresh
+- Commit indexing
+- Branch indexing
+- Analytics refresh
 
 Algorithm:
 
@@ -224,10 +224,10 @@ HEAD changed?
 
 Responsible for:
 
-* Modified files
-* Staged files
-* Deleted files
-* Untracked files
+- Modified files
+- Staged files
+- Deleted files
+- Untracked files
 
 Runs in background only while application is open.
 
@@ -237,14 +237,14 @@ Runs in background only while application is open.
 
 Responsible for:
 
-* Background refresh
-* Debouncing filesystem events
-* Queueing indexing jobs
+- Background refresh
+- Debouncing filesystem events
+- Queueing indexing jobs
 
 Rules:
 
-* Runs only when app is running
-* Stops completely when app closes
+- Runs only when app is running
+- Stops completely when app closes
 
 No daemon mode in MVP.
 
@@ -258,9 +258,9 @@ Validates every filesystem request.
 
 Rules:
 
-* Must be inside approved root
-* Must not escape root via symlink
-* Must not access restricted paths
+- Must be inside approved root
+- Must not escape root via symlink
+- Must not access restricted paths
 
 ---
 
@@ -270,21 +270,21 @@ All Git commands execute through a controlled abstraction.
 
 Allowed:
 
-* status
-* log
-* diff
-* branch
+- status
+- log
+- diff
+- branch
 
 Future:
 
-* pull
-* push
-* fetch
-* merge
+- pull
+- push
+- fetch
+- merge
 
 Blocked:
 
-* arbitrary shell commands
+- arbitrary shell commands
 
 ---
 
@@ -292,10 +292,10 @@ Blocked:
 
 Records:
 
-* Root added
-* Root removed
-* Settings changes
-* Future Git operations
+- Root added
+- Root removed
+- Settings changes
+- Future Git operations
 
 ---
 
@@ -307,8 +307,8 @@ TanStack Query
 
 Purpose:
 
-* Prevent repetitive requests
-* Instant page transitions
+- Prevent repetitive requests
+- Instant page transitions
 
 ---
 
@@ -316,9 +316,9 @@ Purpose:
 
 Precomputed:
 
-* Repository metrics
-* Health score
-* Hotspots
+- Repository metrics
+- Health score
+- Hotspots
 
 Stored in SQLite.
 
@@ -354,10 +354,10 @@ Repository Details
 
 The commit graph must visualize:
 
-* Parent relationships
-* Branches
-* Merge commits
-* Branch divergence
+- Parent relationships
+- Branches
+- Merge commits
+- Branch divergence
 
 Data source:
 
@@ -375,9 +375,9 @@ Branch References
 
 Supports:
 
-* Repository tree navigation
-* File preview
-* File metadata
+- Repository tree navigation
+- File preview
+- File metadata
 
 Supported:
 
@@ -409,8 +409,8 @@ Branch A → Branch B
 
 Modes:
 
-* Unified
-* Side-by-side
+- Unified
+- Side-by-side
 
 ---
 
@@ -422,9 +422,9 @@ WakaTime Adapter
 
 Responsibilities:
 
-* Read WakaTime API
-* Cache durations
-* Map activity to repositories
+- Read WakaTime API
+- Cache durations
+- Map activity to repositories
 
 Will not affect existing architecture.
 
@@ -438,10 +438,10 @@ Git Operations Service
 
 Responsibilities:
 
-* Pull
-* Push
-* Fetch
-* Merge
+- Pull
+- Push
+- Fetch
+- Merge
 
 Must use Git Sandbox.
 

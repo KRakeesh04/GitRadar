@@ -23,9 +23,11 @@ src-tauri/src/domain/
 ## 📋 Detailed File Explanations
 
 ### 1. **mod.rs** - Domain Layer Module
+
 **Purpose:** Central export point for all domain types and layer-wide error handling
 
 **Key Components:**
+
 ```rust
 pub mod branch;
 pub mod commit;
@@ -45,34 +47,40 @@ pub enum DomainError {
 ```
 
 **What It Does:**
+
 - ✓ Exports all domain models
 - ✓ Defines domain-level error types (NOT database errors)
 - ✓ Provides unified error handling for business logic
 
 **When to Use:**
+
 - When you need domain errors
 - When importing domain types
 
 ---
 
 ### 2. **value_objects.rs** - Immutable Business Values
+
 **Purpose:** Represent meaningful domain concepts with validation
 
 #### **HealthScore** (0.0 to 1.0)
+
 ```rust
 pub struct HealthScore(f32);
 ```
 
 **Methods:**
-| Method | Purpose | Example |
-|--------|---------|---------|
-| `new(score)` | Create with validation | `HealthScore::new(0.8)?` |
-| `value()` | Get numeric value | Returns `0.8` |
-| `status()` | Get health status enum | Returns `HealthStatus::Good` |
-| `is_healthy()` | Is score >= 0.7? | Returns `true` for 0.8 |
-| `description()` | Human-readable status | Returns `"Repository is in good condition"` |
+
+| Method          | Purpose                | Example                                     |
+| --------------- | ---------------------- | ------------------------------------------- |
+| `new(score)`    | Create with validation | `HealthScore::new(0.8)?`                    |
+| `value()`       | Get numeric value      | Returns `0.8`                               |
+| `status()`      | Get health status enum | Returns `HealthStatus::Good`                |
+| `is_healthy()`  | Is score >= 0.7?       | Returns `true` for 0.8                      |
+| `description()` | Human-readable status  | Returns `"Repository is in good condition"` |
 
 **Status Levels:**
+
 - `Excellent` (≥0.8) - No action needed
 - `Good` (≥0.6) - Monitoring recommended
 - `Fair` (≥0.4) - Minor issues present
@@ -80,6 +88,7 @@ pub struct HealthScore(f32);
 - `Critical` (<0.2) - Urgent attention needed
 
 **Example Usage:**
+
 ```rust
 let score = HealthScore::new(0.85)?;
 if score.is_healthy() {
@@ -90,6 +99,7 @@ if score.is_healthy() {
 ---
 
 #### **ActivityLevel** - Commit Frequency Classification
+
 ```rust
 pub enum ActivityLevel {
     VeryLow,    // < 1 commit/week
@@ -101,13 +111,15 @@ pub enum ActivityLevel {
 ```
 
 **Methods:**
-| Method | Purpose | Example |
-|--------|---------|---------|
+
+| Method                       | Purpose                     | Example                                              |
+| ---------------------------- | --------------------------- | ---------------------------------------------------- |
 | `from_weekly_commits(count)` | Calculate from commit count | `ActivityLevel::from_weekly_commits(8)` → `Moderate` |
-| `description()` | Human-readable text | Returns `"Moderate - Regular updates"` |
-| `is_active()` | Is activity >= Moderate? | Returns `true` for Moderate+ |
+| `description()`              | Human-readable text         | Returns `"Moderate - Regular updates"`               |
+| `is_active()`                | Is activity >= Moderate?    | Returns `true` for Moderate+                         |
 
 **Example Usage:**
+
 ```rust
 let activity = ActivityLevel::from_weekly_commits(15);
 if activity.is_active() {
@@ -118,36 +130,42 @@ if activity.is_active() {
 ---
 
 #### **RepositoryId** - Type-Safe ID
+
 ```rust
 pub struct RepositoryId(pub i64);
 ```
 
 **Methods:**
-| Method | Purpose |
-|--------|---------|
+
+| Method    | Purpose                              |
+| --------- | ------------------------------------ |
 | `new(id)` | Create with validation (must be > 0) |
-| `value()` | Get the ID value |
+| `value()` | Get the ID value                     |
 
 ---
 
 #### **CommitCount** - Commit Quantity
+
 ```rust
 pub struct CommitCount(pub u32);
 ```
 
 **Methods:**
-| Method | Purpose |
-|--------|---------|
+
+| Method       | Purpose               |
+| ------------ | --------------------- |
 | `new(count)` | Create a commit count |
-| `value()` | Get the count |
-| `is_empty()` | Is count == 0? |
+| `value()`    | Get the count         |
+| `is_empty()` | Is count == 0?        |
 
 ---
 
 ### 3. **repository.rs** - Repository Business Entity
+
 **Purpose:** Core business logic for repositories
 
 #### **Repository Structure**
+
 ```rust
 pub struct Repository {
     pub id: RepositoryId,
@@ -164,22 +182,23 @@ pub struct Repository {
 
 #### **Key Business Methods:**
 
-| Method | What It Does | Example |
-|--------|-------------|---------|
-| `is_healthy()` | Health score >= 0.7? | `repo.is_healthy() → true` |
-| `status()` | Returns `RepositoryStatus` enum | `repo.status() → HealthyAndActive` |
-| `needs_maintenance()` | Bad health OR inactive? | `repo.needs_maintenance() → true` |
-| `calculate_risk_score()` | Risk score 0.0-1.0 | Based on health, activity, contributors |
-| `maintenance_priority()` | `Critical`, `High`, `Medium`, `Low`, `None` | Determines action urgency |
-| `is_dormant()` | No commits AND inactive? | `repo.is_dormant() → true` |
-| `activity_description()` | Human text with contributors | `"High activity with 5 contributors"` |
-| `get_health_report()` | Full health analysis | Returns `HealthReport` struct |
-| `validate_path()` | Path validation logic | Ensures `.git` in git_dir |
-| `set_health_score(score)` | Update health score | `repo.set_health_score(0.8)?` |
-| `set_activity_level(level)` | Update activity | `repo.set_activity_level(ActivityLevel::High)` |
-| `update_metrics(commits, contributors)` | Update counts | `repo.update_metrics(100, 5)` |
+| Method                                  | What It Does                                | Example                                        |
+| --------------------------------------- | ------------------------------------------- | ---------------------------------------------- |
+| `is_healthy()`                          | Health score >= 0.7?                        | `repo.is_healthy() → true`                     |
+| `status()`                              | Returns `RepositoryStatus` enum             | `repo.status() → HealthyAndActive`             |
+| `needs_maintenance()`                   | Bad health OR inactive?                     | `repo.needs_maintenance() → true`              |
+| `calculate_risk_score()`                | Risk score 0.0-1.0                          | Based on health, activity, contributors        |
+| `maintenance_priority()`                | `Critical`, `High`, `Medium`, `Low`, `None` | Determines action urgency                      |
+| `is_dormant()`                          | No commits AND inactive?                    | `repo.is_dormant() → true`                     |
+| `activity_description()`                | Human text with contributors                | `"High activity with 5 contributors"`          |
+| `get_health_report()`                   | Full health analysis                        | Returns `HealthReport` struct                  |
+| `validate_path()`                       | Path validation logic                       | Ensures `.git` in git_dir                      |
+| `set_health_score(score)`               | Update health score                         | `repo.set_health_score(0.8)?`                  |
+| `set_activity_level(level)`             | Update activity                             | `repo.set_activity_level(ActivityLevel::High)` |
+| `update_metrics(commits, contributors)` | Update counts                               | `repo.update_metrics(100, 5)`                  |
 
 #### **Example Usage:**
+
 ```rust
 // Create repository
 let mut repo = Repository::new(
@@ -208,6 +227,7 @@ println!("Risk score: {}", report.risk_score);
 ---
 
 #### **Repository Status Enum:**
+
 ```rust
 pub enum RepositoryStatus {
     HealthyAndActive,      // Good! Keep as-is
@@ -220,9 +240,11 @@ pub enum RepositoryStatus {
 ---
 
 ### 4. **commit.rs** - Commit Business Entity
+
 **Purpose:** Business logic for analyzing commits
 
 #### **Commit Structure**
+
 ```rust
 pub struct Commit {
     pub id: CommitId,
@@ -239,21 +261,22 @@ pub struct Commit {
 
 #### **Key Business Methods:**
 
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `is_merge_commit()` | Has 2+ parents? | `bool` |
-| `is_root_commit()` | Has 0 parents? | `bool` |
-| `is_regular_commit()` | Has exactly 1 parent? | `bool` |
-| `commit_type()` | Returns `CommitType` enum | `Root`, `Regular`, or `Merge` |
-| `message_size()` | Total message length | `usize` |
-| `is_well_documented()` | Has body + subject > 10 chars? | `bool` |
-| `determine_significance()` | Mark if merge or documented | Sets `is_significant` |
-| `short_message()` | First 50 chars of subject | `String` |
-| `get_commit_info()` | Simplified info for display | `CommitInfo` struct |
-| `validate()` | Check integrity | `Result<()>` |
-| `set_body(body)` | Set commit description | Void |
+| Method                     | Purpose                        | Returns                       |
+| -------------------------- | ------------------------------ | ----------------------------- |
+| `is_merge_commit()`        | Has 2+ parents?                | `bool`                        |
+| `is_root_commit()`         | Has 0 parents?                 | `bool`                        |
+| `is_regular_commit()`      | Has exactly 1 parent?          | `bool`                        |
+| `commit_type()`            | Returns `CommitType` enum      | `Root`, `Regular`, or `Merge` |
+| `message_size()`           | Total message length           | `usize`                       |
+| `is_well_documented()`     | Has body + subject > 10 chars? | `bool`                        |
+| `determine_significance()` | Mark if merge or documented    | Sets `is_significant`         |
+| `short_message()`          | First 50 chars of subject      | `String`                      |
+| `get_commit_info()`        | Simplified info for display    | `CommitInfo` struct           |
+| `validate()`               | Check integrity                | `Result<()>`                  |
+| `set_body(body)`           | Set commit description         | Void                          |
 
 #### **Example Usage:**
+
 ```rust
 // Create commit
 let mut commit = Commit::new(
@@ -289,6 +312,7 @@ println!("Author: {}, Subject: {}", info.author, info.subject);
 ---
 
 #### **CommitType Enum:**
+
 ```rust
 pub enum CommitType {
     Root,    // Initial commit (0 parents)
@@ -300,9 +324,11 @@ pub enum CommitType {
 ---
 
 ### 5. **branch.rs** - Branch Business Entity
+
 **Purpose:** Business logic for branches
 
 #### **Branch Structure**
+
 ```rust
 pub struct Branch {
     pub id: BranchId,
@@ -318,19 +344,20 @@ pub struct Branch {
 
 #### **Key Business Methods:**
 
-| Method | Purpose | Example |
-|--------|---------|---------|
-| `is_ahead()` | Has commits not in default? | Returns `true` if ahead_count > 0 |
-| `is_behind()` | Missing commits from default? | Returns `true` if behind_count > 0 |
-| `is_in_sync()` | No divergence? | Returns `true` if ahead=0 & behind=0 |
-| `status()` | Returns `BranchStatus` enum | `InSync`, `Ahead`, `Behind`, `Diverged` |
-| `sync_message()` | Human-readable sync state | `"Ahead by 5 commits"` |
-| `should_merge()` | Ready to merge? | `true` if ahead & not behind |
-| `is_stale()` | Behind by many commits? | `true` if behind > 50 |
-| `importance()` | Returns `BranchImportance` | `Critical`, `High`, `Medium`, `Low` |
-| `update_sync_info(ahead, behind)` | Update commit counts | Void |
+| Method                            | Purpose                       | Example                                 |
+| --------------------------------- | ----------------------------- | --------------------------------------- |
+| `is_ahead()`                      | Has commits not in default?   | Returns `true` if ahead_count > 0       |
+| `is_behind()`                     | Missing commits from default? | Returns `true` if behind_count > 0      |
+| `is_in_sync()`                    | No divergence?                | Returns `true` if ahead=0 & behind=0    |
+| `status()`                        | Returns `BranchStatus` enum   | `InSync`, `Ahead`, `Behind`, `Diverged` |
+| `sync_message()`                  | Human-readable sync state     | `"Ahead by 5 commits"`                  |
+| `should_merge()`                  | Ready to merge?               | `true` if ahead & not behind            |
+| `is_stale()`                      | Behind by many commits?       | `true` if behind > 50                   |
+| `importance()`                    | Returns `BranchImportance`    | `Critical`, `High`, `Medium`, `Low`     |
+| `update_sync_info(ahead, behind)` | Update commit counts          | Void                                    |
 
 #### **Example Usage:**
+
 ```rust
 let mut branch = Branch::new(
     1,
@@ -355,7 +382,9 @@ println!("Importance: {:?}", branch.importance());
 ---
 
 #### **BranchType Enum:**
+
 Automatically detected from branch name:
+
 ```rust
 pub enum BranchType {
     Main,       // "main" or "master"
@@ -370,6 +399,7 @@ pub enum BranchType {
 ---
 
 #### **BranchStatus Enum:**
+
 ```rust
 pub enum BranchStatus {
     InSync,   // In sync with default branch
@@ -382,9 +412,11 @@ pub enum BranchStatus {
 ---
 
 ### 6. **contributor.rs** - Contributor Business Entity
+
 **Purpose:** Business logic for contributors
 
 #### **Contributor Structure**
+
 ```rust
 pub struct Contributor {
     pub id: ContributorId,
@@ -401,19 +433,20 @@ pub struct Contributor {
 
 #### **Key Business Methods:**
 
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `impact_score()` | Weighted contributor importance | `0.0-1.0` |
-| `contributor_level()` | Returns tier/level | `CoreMaintainer`, `Major`, `Regular`, `Occasional`, `Minimal` |
-| `commits_per_day()` | Average commits/day | `f32` |
-| `changes_per_commit()` | Average additions+deletions/commit | `u32` |
-| `is_active()` | Committed recently? | `bool` |
-| `get_role()` | Human role with activity | `ActiveMaintainer`, `Contributor`, etc. |
-| `contribution_summary()` | Full text summary | `"50 commits, 5000 added, 2000 removed..."` |
-| `update_metrics(add, del, days)` | Update counts | Void |
-| `increment_commit_count()` | Add 1 commit | Void |
+| Method                           | Purpose                            | Returns                                                       |
+| -------------------------------- | ---------------------------------- | ------------------------------------------------------------- |
+| `impact_score()`                 | Weighted contributor importance    | `0.0-1.0`                                                     |
+| `contributor_level()`            | Returns tier/level                 | `CoreMaintainer`, `Major`, `Regular`, `Occasional`, `Minimal` |
+| `commits_per_day()`              | Average commits/day                | `f32`                                                         |
+| `changes_per_commit()`           | Average additions+deletions/commit | `u32`                                                         |
+| `is_active()`                    | Committed recently?                | `bool`                                                        |
+| `get_role()`                     | Human role with activity           | `ActiveMaintainer`, `Contributor`, etc.                       |
+| `contribution_summary()`         | Full text summary                  | `"50 commits, 5000 added, 2000 removed..."`                   |
+| `update_metrics(add, del, days)` | Update counts                      | Void                                                          |
+| `increment_commit_count()`       | Add 1 commit                       | Void                                                          |
 
 #### **Example Usage:**
+
 ```rust
 let mut contributor = Contributor::new(
     1,
@@ -439,6 +472,7 @@ println!("Summary: {}", contributor.contribution_summary());
 ---
 
 #### **ContributorLevel Enum:**
+
 ```rust
 pub enum ContributorLevel {
     Minimal,              // Very little contribution
@@ -466,7 +500,7 @@ pub fn get_repository(id: i64) {
 pub fn get_repository(id: i64) {
     // 1. Fetch persistence model from database
     let persistence = db::repositories::get_by_id(id)?;
-    
+
     // 2. Map to domain model
     let mut domain = domain::Repository::new(
         persistence.id,
@@ -474,12 +508,12 @@ pub fn get_repository(id: i64) {
         PathBuf::from(&persistence.path),
         PathBuf::from(&persistence.git_dir_path),
     )?;
-    
+
     // 3. Set business state
     domain.set_health_score(calculate_health(&persistence))?;
     domain.set_activity_level(calculate_activity(&persistence));
     domain.update_metrics(persistence.total_commits, persistence.contributors);
-    
+
     // 4. Return domain model to service/command
     Ok(domain)
 }
@@ -501,11 +535,13 @@ pub fn get_repository(id: i64) {
 ## ✅ Testing
 
 Each file includes comprehensive unit tests. Run with:
+
 ```bash
 cargo test --lib domain::
 ```
 
 Tests cover:
+
 - Object creation and validation
 - Business logic calculations
 - Enum determinations
@@ -534,4 +570,3 @@ When refactoring existing code to use domain layer:
 3. **Update Commands** - Call services instead of database directly
 4. **Add Security Layer** - Validate access before domain operations
 5. **Add Infrastructure Layer** - Clean up git/fs code
-

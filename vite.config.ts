@@ -1,20 +1,18 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'node:path'
-import tailwindcss from '@tailwindcss/vite'
+import { defineConfig } from 'vite';
+import { devtools } from '@tanstack/devtools-vite';
 
-export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss()
-  ],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src')
-    }
-  },
+import { tanstackStart } from '@tanstack/react-start/plugin/vite';
+
+import viteReact from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+
+const config = defineConfig({
+  resolve: { tsconfigPaths: true },
+  plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
   server: {
     port: 1420,
     strictPort: true
   }
-})
+});
+
+export default config;

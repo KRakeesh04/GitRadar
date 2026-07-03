@@ -22,3 +22,7 @@ Cargo.lock
 
 # Tauri specific
 src-tauri/src-tauri-generated/
+
+package-lock.json
+pnpm-lock.yaml
+yarn.lock

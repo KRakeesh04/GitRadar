@@ -8,10 +8,10 @@ Version: 1.0
 
 GitRadar processes highly sensitive information:
 
-* Source code
-* Project structures
-* Commit history
-* Developer activity
+- Source code
+- Project structures
+- Commit history
+- Developer activity
 
 Therefore:
 
@@ -23,11 +23,11 @@ Therefore:
 
 Protect:
 
-* User source code
-* Repository metadata
-* Local filesystem
-* Future credentials
-* Future Git operations
+- User source code
+- Repository metadata
+- Local filesystem
+- Future credentials
+- Future Git operations
 
 ---
 
@@ -64,9 +64,9 @@ SQLite
 
 Every command must validate:
 
-* IDs
-* Paths
-* Query parameters
+- IDs
+- Paths
+- Query parameters
 
 Example:
 
@@ -140,23 +140,23 @@ BLOCKED
 
 Allowed Commands
 
-* git status
-* git log
-* git show
-* git diff
-* git branch
+- git status
+- git log
+- git show
+- git diff
+- git branch
 
 Future:
 
-* git pull
-* git push
-* git merge
+- git pull
+- git push
+- git merge
 
 Blocked:
 
-* shell execution
-* bash scripts
-* arbitrary commands
+- shell execution
+- bash scripts
+- arbitrary commands
 
 Never:
 
@@ -182,15 +182,15 @@ repo belongs to approved root
 
 SQLite stores:
 
-* Analytics
-* Metadata
-* Settings
+- Analytics
+- Metadata
+- Settings
 
 SQLite must never store:
 
-* Passwords
-* Tokens (plain text)
-* SSH keys
+- Passwords
+- Tokens (plain text)
+- SSH keys
 
 ---
 
@@ -276,9 +276,9 @@ Load on demand.
 
 Detect:
 
-* Images
-* Videos
-* Archives
+- Images
+- Videos
+- Archives
 
 Do not index content.
 
