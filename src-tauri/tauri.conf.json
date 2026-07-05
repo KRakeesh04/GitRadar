@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "GitRadar",
+        "title": "",
         "width": 1100,
         "height": 900,
         "minWidth": 1050,
