@@ -65,6 +65,11 @@ const sidebarContentItems: SidebarContentItem[] = [
       { name: "api-server", branch: "feature/auth", status: "warning" },
       { name: "mobile-app", branch: "main", status: "healthy" },
       { name: "design-system", branch: "main", status: "healthy" },
+      { name: "gitradar", branch: "main", status: "warning" },
+      { name: "web-dashboard", branch: "develop", status: "healthy" },
+      { name: "api-server", branch: "feature/auth", status: "warning" },
+      { name: "mobile-app", branch: "main", status: "healthy" },
+      { name: "design-system", branch: "main", status: "healthy" },
     ],
   },
   {
@@ -73,6 +78,11 @@ const sidebarContentItems: SidebarContentItem[] = [
     list: [
       { name: "gitradar", branch: "main", status: "warning" },
       { name: "api-server", branch: "feature/auth", status: "warning" },
+      { name: "gitradar", branch: "main", status: "warning" },
+      { name: "web-dashboard", branch: "develop", status: "healthy" },
+      { name: "api-server", branch: "feature/auth", status: "warning" },
+      { name: "mobile-app", branch: "main", status: "healthy" },
+      { name: "design-system", branch: "main", status: "healthy" },
     ],
   }
 ];
@@ -143,7 +153,7 @@ export function AppSidebar() {
             </TabsList>
             {sidebarContentItems.map((item) => (
               <TabsContent key={item.name} value={item.name.toLowerCase()} className="mt-0">
-                <div className="space-y-4">
+                <div className="space-y-4 overflow-y-auto">
                   {item.list.map((repo) => (
                     <a
                       key={`${item.name}-${repo.name}`}
@@ -151,7 +161,7 @@ export function AppSidebar() {
                       className="block rounded-md px-0.5 py-0.5 text-sidebar-foreground transition-colors hover:text-(--brand)"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold leading-5">{repo.name}</span>
+                        <span className="text-sm lg:font-semibold leading-5">{repo.name}</span>
                         <span
                           className={cn(
                             "h-1.5 w-1.5 rounded-full",

@@ -98,6 +98,7 @@ body {
 
   --brand: #3b82f6;
   --brand-hover: #2563eb;
+  --brand-low: #6199f2fe;
 }
 
 .dark {
@@ -135,6 +136,7 @@ body {
 
   --brand: #3b82f6;
   --brand-hover: #2563eb;
+  --brand-low: #6199f2fe;
 }
 
 @layer base {
