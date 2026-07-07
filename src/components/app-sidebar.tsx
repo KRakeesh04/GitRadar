@@ -1,11 +1,11 @@
-import * as React from "react";
-import { Bell, Clock, FolderGit2, FolderOpen, GitBranch, Grid2X2, LayoutDashboard, Moon, Search, Settings, Star, Sun } from "lucide-react";
+import { Bell, Clock, FolderGit2, FolderOpen, GitBranch, LayoutDashboard, Moon, PanelLeftClose, PanelRightClose, Search, Settings, Star, Sun } from "lucide-react";
 import { useLocation } from "@tanstack/react-router";
 
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "./ui/sidebar";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "./ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Separator } from "./ui/separator";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
 interface SidebarmenuItem {
   name: string;
@@ -79,9 +79,10 @@ const sidebarContentItems: SidebarContentItem[] = [
 
 export function AppSidebar() {
   const location = useLocation();
-  const [isDarkMode, setIsDarkMode] = React.useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { toggleSidebar, open } = useSidebar();
 
-  React.useEffect(() => {
+  useEffect(() => {
     setIsDarkMode(document.documentElement.classList.contains("dark"));
   }, []);
 
@@ -91,12 +92,22 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-sidebar-border">
-      <SidebarHeader className="flex h-18 flex-row items-center gap-5 px-4 py-0">
-        <div className="w-9 h-9 bg-(--brand) rounded-lg flex items-center justify-center shrink-0 ml-0.5">
-          <FolderGit2 className="text-white" size={30} />
+    <Sidebar collapsible="icon" className="border-sidebar-border">
+      <SidebarHeader className="flex h-18 flex-row items-center gap-5 px-4 py-0 group-data-[collapsible=icon]:px-1.5 group">
+        <div className="w-9 h-9 bg-(--brand) rounded-lg flex items-center justify-center shrink-0 ml-0.5 group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:group-hover:hidden transition-colors">
+          <FolderGit2 className="text-white" size={25} />
         </div>
-        <span className="text-sidebar-foreground text-2xl font-bold">GitRadar</span>
+        <span className="text-sidebar-foreground text-2xl font-bold group-data-[collapsible=icon]:hidden">GitRadar</span>
+        <button
+          className="ml-auto text-sidebar-foreground cursor-pointer group-data-[collapsible=icon]:absolute left-3.5"
+          onClick={toggleSidebar}
+        >
+          {open ? (
+            <PanelLeftClose className="w-5 h-5 group-data-[collapsible=icon]:hidden" />
+          ) : (
+            <PanelRightClose className="hidden w-5 h-5 group-data-[collapsible=icon]:group-hover:block" />
+          )}
+        </button>
       </SidebarHeader>
       <Separator className="bg-sidebar-border" />
       <SidebarContent className="bg-sidebar">
@@ -109,7 +120,7 @@ export function AppSidebar() {
                   className="h-9 rounded-md px-3 text-sm font-normal data-active:bg-(--brand) data-active:text-white data-active:hover:bg-(--brand) data-active:hover:text-white"
                   render={
                     <a href={item.link}>
-                      {item.icon}
+                      {!open && item.indicator ? <span className="text-(--brand)">{item.icon}</span> : item.icon}
                       <span>{item.name}</span>
                       {item.indicator ? <span className="ml-auto h-2 w-2 rounded-full bg-(--brand)" /> : null}
                     </a>
@@ -120,7 +131,7 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroupContent>
         <Separator className="bg-sidebar-border" />
-        <SidebarGroupContent className="px-3 py-2">
+        <SidebarGroupContent className="px-3 py-2 group-data-[collapsible=icon]:hidden">
           <Tabs defaultValue="recent" className="w-full gap-3">
             <TabsList className="h-8 w-fit grid-cols-2 bg-muted/50 p-0">
               {sidebarContentItems.map((item) => (
@@ -166,7 +177,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={toggleTheme}
-              className="h-9 rounded-md px-3 text-sm font-normal hover:bg-muted/70"
+              className="h-9 rounded-md px-3 text-sm font-normal hover:bg-muted/70 cursor-pointer"
             >
               {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               <span>{isDarkMode ? "Light Mode" : "Dark Mode"}</span>
@@ -178,7 +189,7 @@ export function AppSidebar() {
               render={
                 <a href="/settings">
                   <Settings className="w-4 h-4" />
-                <span>Settings</span>
+                  <span>Settings</span>
                 </a>
               }
             />
