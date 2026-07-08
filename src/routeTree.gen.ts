@@ -9,18 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as RepositoryRouteImport } from './routes/repository'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as RepositoryIdRouteImport } from './routes/repository.$id'
-import { Route as RepositoryIdIndexRouteImport } from './routes/repository.$id.index'
-import { Route as RepositoryIdPullsRouteImport } from './routes/repository.$id.pulls'
-import { Route as RepositoryIdInsightsRouteImport } from './routes/repository.$id.insights'
-import { Route as RepositoryIdFilesRouteImport } from './routes/repository.$id.files'
-import { Route as RepositoryIdCommitsRouteImport } from './routes/repository.$id.commits'
-import { Route as RepositoryIdCommitsBranchRouteImport } from './routes/repository.$id.commits.$branch'
+import { Route as RepositoryIdRouteRouteImport } from './routes/repository.$id/route'
+import { Route as RepositoryIdIndexRouteImport } from './routes/repository.$id/index'
+import { Route as RepositoryIdPullsRouteImport } from './routes/repository.$id/pulls'
+import { Route as RepositoryIdInsightsRouteImport } from './routes/repository.$id/insights'
+import { Route as RepositoryIdFilesRouteImport } from './routes/repository.$id/files'
+import { Route as RepositoryIdCommitsRouteRouteImport } from './routes/repository.$id/commits/route'
+import { Route as RepositoryIdCommitsBranchRouteImport } from './routes/repository.$id/commits/$branch'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
@@ -41,7 +47,7 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RepositoryIdRoute = RepositoryIdRouteImport.update({
+const RepositoryIdRouteRoute = RepositoryIdRouteRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => RepositoryRoute,
@@ -49,33 +55,34 @@ const RepositoryIdRoute = RepositoryIdRouteImport.update({
 const RepositoryIdIndexRoute = RepositoryIdIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => RepositoryIdRoute,
+  getParentRoute: () => RepositoryIdRouteRoute,
 } as any)
 const RepositoryIdPullsRoute = RepositoryIdPullsRouteImport.update({
   id: '/pulls',
   path: '/pulls',
-  getParentRoute: () => RepositoryIdRoute,
+  getParentRoute: () => RepositoryIdRouteRoute,
 } as any)
 const RepositoryIdInsightsRoute = RepositoryIdInsightsRouteImport.update({
   id: '/insights',
   path: '/insights',
-  getParentRoute: () => RepositoryIdRoute,
+  getParentRoute: () => RepositoryIdRouteRoute,
 } as any)
 const RepositoryIdFilesRoute = RepositoryIdFilesRouteImport.update({
   id: '/files',
   path: '/files',
-  getParentRoute: () => RepositoryIdRoute,
+  getParentRoute: () => RepositoryIdRouteRoute,
 } as any)
-const RepositoryIdCommitsRoute = RepositoryIdCommitsRouteImport.update({
-  id: '/commits',
-  path: '/commits',
-  getParentRoute: () => RepositoryIdRoute,
-} as any)
+const RepositoryIdCommitsRouteRoute =
+  RepositoryIdCommitsRouteRouteImport.update({
+    id: '/commits',
+    path: '/commits',
+    getParentRoute: () => RepositoryIdRouteRoute,
+  } as any)
 const RepositoryIdCommitsBranchRoute =
   RepositoryIdCommitsBranchRouteImport.update({
     id: '/$branch',
     path: '/$branch',
-    getParentRoute: () => RepositoryIdCommitsRoute,
+    getParentRoute: () => RepositoryIdCommitsRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -83,8 +90,9 @@ export interface FileRoutesByFullPath {
   '/activity': typeof ActivityRoute
   '/repository': typeof RepositoryRouteWithChildren
   '/search': typeof SearchRoute
-  '/repository/$id': typeof RepositoryIdRouteWithChildren
-  '/repository/$id/commits': typeof RepositoryIdCommitsRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/repository/$id': typeof RepositoryIdRouteRouteWithChildren
+  '/repository/$id/commits': typeof RepositoryIdCommitsRouteRouteWithChildren
   '/repository/$id/files': typeof RepositoryIdFilesRoute
   '/repository/$id/insights': typeof RepositoryIdInsightsRoute
   '/repository/$id/pulls': typeof RepositoryIdPullsRoute
@@ -96,7 +104,8 @@ export interface FileRoutesByTo {
   '/activity': typeof ActivityRoute
   '/repository': typeof RepositoryRouteWithChildren
   '/search': typeof SearchRoute
-  '/repository/$id/commits': typeof RepositoryIdCommitsRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/repository/$id/commits': typeof RepositoryIdCommitsRouteRouteWithChildren
   '/repository/$id/files': typeof RepositoryIdFilesRoute
   '/repository/$id/insights': typeof RepositoryIdInsightsRoute
   '/repository/$id/pulls': typeof RepositoryIdPullsRoute
@@ -109,8 +118,9 @@ export interface FileRoutesById {
   '/activity': typeof ActivityRoute
   '/repository': typeof RepositoryRouteWithChildren
   '/search': typeof SearchRoute
-  '/repository/$id': typeof RepositoryIdRouteWithChildren
-  '/repository/$id/commits': typeof RepositoryIdCommitsRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/repository/$id': typeof RepositoryIdRouteRouteWithChildren
+  '/repository/$id/commits': typeof RepositoryIdCommitsRouteRouteWithChildren
   '/repository/$id/files': typeof RepositoryIdFilesRoute
   '/repository/$id/insights': typeof RepositoryIdInsightsRoute
   '/repository/$id/pulls': typeof RepositoryIdPullsRoute
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/repository'
     | '/search'
+    | '/settings'
     | '/repository/$id'
     | '/repository/$id/commits'
     | '/repository/$id/files'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/repository'
     | '/search'
+    | '/settings'
     | '/repository/$id/commits'
     | '/repository/$id/files'
     | '/repository/$id/insights'
@@ -149,6 +161,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/repository'
     | '/search'
+    | '/settings'
     | '/repository/$id'
     | '/repository/$id/commits'
     | '/repository/$id/files'
@@ -163,10 +176,18 @@ export interface RootRouteChildren {
   ActivityRoute: typeof ActivityRoute
   RepositoryRoute: typeof RepositoryRouteWithChildren
   SearchRoute: typeof SearchRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/search': {
       id: '/search'
       path: '/search'
@@ -199,7 +220,7 @@ declare module '@tanstack/react-router' {
       id: '/repository/$id'
       path: '/$id'
       fullPath: '/repository/$id'
-      preLoaderRoute: typeof RepositoryIdRouteImport
+      preLoaderRoute: typeof RepositoryIdRouteRouteImport
       parentRoute: typeof RepositoryRoute
     }
     '/repository/$id/': {
@@ -207,83 +228,85 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/repository/$id/'
       preLoaderRoute: typeof RepositoryIdIndexRouteImport
-      parentRoute: typeof RepositoryIdRoute
+      parentRoute: typeof RepositoryIdRouteRoute
     }
     '/repository/$id/pulls': {
       id: '/repository/$id/pulls'
       path: '/pulls'
       fullPath: '/repository/$id/pulls'
       preLoaderRoute: typeof RepositoryIdPullsRouteImport
-      parentRoute: typeof RepositoryIdRoute
+      parentRoute: typeof RepositoryIdRouteRoute
     }
     '/repository/$id/insights': {
       id: '/repository/$id/insights'
       path: '/insights'
       fullPath: '/repository/$id/insights'
       preLoaderRoute: typeof RepositoryIdInsightsRouteImport
-      parentRoute: typeof RepositoryIdRoute
+      parentRoute: typeof RepositoryIdRouteRoute
     }
     '/repository/$id/files': {
       id: '/repository/$id/files'
       path: '/files'
       fullPath: '/repository/$id/files'
       preLoaderRoute: typeof RepositoryIdFilesRouteImport
-      parentRoute: typeof RepositoryIdRoute
+      parentRoute: typeof RepositoryIdRouteRoute
     }
     '/repository/$id/commits': {
       id: '/repository/$id/commits'
       path: '/commits'
       fullPath: '/repository/$id/commits'
-      preLoaderRoute: typeof RepositoryIdCommitsRouteImport
-      parentRoute: typeof RepositoryIdRoute
+      preLoaderRoute: typeof RepositoryIdCommitsRouteRouteImport
+      parentRoute: typeof RepositoryIdRouteRoute
     }
     '/repository/$id/commits/$branch': {
       id: '/repository/$id/commits/$branch'
       path: '/$branch'
       fullPath: '/repository/$id/commits/$branch'
       preLoaderRoute: typeof RepositoryIdCommitsBranchRouteImport
-      parentRoute: typeof RepositoryIdCommitsRoute
+      parentRoute: typeof RepositoryIdCommitsRouteRoute
     }
   }
 }
 
-interface RepositoryIdCommitsRouteChildren {
+interface RepositoryIdCommitsRouteRouteChildren {
   RepositoryIdCommitsBranchRoute: typeof RepositoryIdCommitsBranchRoute
 }
 
-const RepositoryIdCommitsRouteChildren: RepositoryIdCommitsRouteChildren = {
-  RepositoryIdCommitsBranchRoute: RepositoryIdCommitsBranchRoute,
-}
+const RepositoryIdCommitsRouteRouteChildren: RepositoryIdCommitsRouteRouteChildren =
+  {
+    RepositoryIdCommitsBranchRoute: RepositoryIdCommitsBranchRoute,
+  }
 
-const RepositoryIdCommitsRouteWithChildren =
-  RepositoryIdCommitsRoute._addFileChildren(RepositoryIdCommitsRouteChildren)
+const RepositoryIdCommitsRouteRouteWithChildren =
+  RepositoryIdCommitsRouteRoute._addFileChildren(
+    RepositoryIdCommitsRouteRouteChildren,
+  )
 
-interface RepositoryIdRouteChildren {
-  RepositoryIdCommitsRoute: typeof RepositoryIdCommitsRouteWithChildren
+interface RepositoryIdRouteRouteChildren {
+  RepositoryIdCommitsRouteRoute: typeof RepositoryIdCommitsRouteRouteWithChildren
   RepositoryIdFilesRoute: typeof RepositoryIdFilesRoute
   RepositoryIdInsightsRoute: typeof RepositoryIdInsightsRoute
   RepositoryIdPullsRoute: typeof RepositoryIdPullsRoute
   RepositoryIdIndexRoute: typeof RepositoryIdIndexRoute
 }
 
-const RepositoryIdRouteChildren: RepositoryIdRouteChildren = {
-  RepositoryIdCommitsRoute: RepositoryIdCommitsRouteWithChildren,
+const RepositoryIdRouteRouteChildren: RepositoryIdRouteRouteChildren = {
+  RepositoryIdCommitsRouteRoute: RepositoryIdCommitsRouteRouteWithChildren,
   RepositoryIdFilesRoute: RepositoryIdFilesRoute,
   RepositoryIdInsightsRoute: RepositoryIdInsightsRoute,
   RepositoryIdPullsRoute: RepositoryIdPullsRoute,
   RepositoryIdIndexRoute: RepositoryIdIndexRoute,
 }
 
-const RepositoryIdRouteWithChildren = RepositoryIdRoute._addFileChildren(
-  RepositoryIdRouteChildren,
-)
+const RepositoryIdRouteRouteWithChildren =
+  RepositoryIdRouteRoute._addFileChildren(RepositoryIdRouteRouteChildren)
 
 interface RepositoryRouteChildren {
-  RepositoryIdRoute: typeof RepositoryIdRouteWithChildren
+  RepositoryIdRouteRoute: typeof RepositoryIdRouteRouteWithChildren
 }
 
 const RepositoryRouteChildren: RepositoryRouteChildren = {
-  RepositoryIdRoute: RepositoryIdRouteWithChildren,
+  RepositoryIdRouteRoute: RepositoryIdRouteRouteWithChildren,
 }
 
 const RepositoryRouteWithChildren = RepositoryRoute._addFileChildren(
@@ -295,6 +318,7 @@ const rootRouteChildren: RootRouteChildren = {
   ActivityRoute: ActivityRoute,
   RepositoryRoute: RepositoryRouteWithChildren,
   SearchRoute: SearchRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
