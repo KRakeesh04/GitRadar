@@ -3,8 +3,8 @@ import { Button } from '#/components/ui/button';
 import { Card, CardContent, CardHeader } from '#/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '#/components/ui/dropdown-menu';
 import { Separator } from '#/components/ui/separator';
-import { createFileRoute } from '@tanstack/react-router'
-import { ArrowUpNarrowWide, ChevronsUpDown, Clock, FileText, Filter, GitBranch, GitCommit, Timer, Users } from 'lucide-react';
+import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router'
+import { ArrowUpNarrowWide, ChevronsUpDown, Clock, FileText, Filter, GitBranch, GitCommit, Users } from 'lucide-react';
 import { useState } from 'react';
 
 export const Route = createFileRoute('/repository')({
@@ -129,6 +129,11 @@ function RouteComponent() {
   const [filter, setFilter] = useState<RepositorySearchFilter>(RepositorySearchFilter.All);
   const [activeDropdownFilter, setActiveDropdownFilter] = useState<RepositoryDropdownFilter>(RepositoryDropdownFilter.RecentlyAccessed);
   const [activeDropdownFilterValue, setActiveDropdownFilterValue] = useState<string>(RepositoryDropdownFilter.RecentlyAccessed);
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+
+  if (pathname.replace(/\/$/, '') !== '/repository') {
+    return <Outlet />
+  }
 
   return (
     <div className="flex flex-col gap-2 scroll-auto px-[clamp(0.5rem,2vw,2.5rem)] py-5 overflow-y-auto">
@@ -182,31 +187,38 @@ function RouteComponent() {
       <div className="flex flex-wrap justify-center gap-6 my-4 lg:my-5 py-5 place-items-center w-full overflow-y-auto">
         {/* Repository list content */}
         {repoList.map((repo, index) => (
-          <Card key={index} className="p-4 mb-2 w-90 lg:w-100 xl:w-120 w-clump(20rem, 30vw, 25rem) transition-transform duration-300 hover:border hover:border-(--brand) hover:shadow-lg cursor-default">
-            <CardHeader className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 w-full">
-                <span className="text-lg font-semibold">{repo.name}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${repo.status === 'Clean' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  {repo.status}
-                </span>
-                <span className='ml-auto border border-input px-2 py-1 rounded-md bg-muted'>TypeScript</span>
-              </div>
-              <span className="text-sm text-muted-foreground">{repo.description}</span>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-5 mt-2 text-sm text-foreground">
-                <span className='flex items-center'><GitBranch className="w-4 h-4 mr-2" />{repo.branch}</span>
-                <span className='flex items-center'><Clock className="w-4 h-4 mr-2" />{repo.lastCommit}</span>
-              </div>
-              <Separator orientation="horizontal" className="my-2" />
-              <div className="flex flex-wrap gap-5 mt-2 text-sm text-muted-foreground">
-                <span className='flex items-center'><GitCommit className="w-4 h-4 mr-2" />{repo.totalCommits}</span>
-                <span className='flex items-center'><FileText className="w-4 h-4 mr-2" />{repo.fileCount}</span>
-                <span className='flex items-center'><Users className="w-4 h-4 mr-2" />{repo.contributors}</span>
-                <span className='ml-auto'>{repo.path.length > 20 ? `...${repo.path.substring(repo.path.length - 20)}` : repo.path}</span>
-              </div>
-            </CardContent>
-          </Card>
+          <Link
+            key={index}
+            to='/repository/$id'
+            params={{ id: String(index) }}
+            className="block"
+          >
+            <Card className="p-4 mb-2 w-90 lg:w-100 xl:w-120 w-clump(20rem, 30vw, 25rem) transition-transform duration-300 hover:border hover:border-(--brand) hover:shadow-lg cursor-pointer">
+              <CardHeader className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 w-full">
+                  <span className="text-lg font-semibold">{repo.name}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${repo.status === 'Clean' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {repo.status}
+                  </span>
+                  <span className='ml-auto border border-input px-2 py-1 rounded-md bg-muted'>TypeScript</span>
+                </div>
+                <span className="text-sm text-muted-foreground">{repo.description}</span>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-5 mt-2 text-sm text-foreground">
+                  <span className='flex items-center'><GitBranch className="w-4 h-4 mr-2" />{repo.branch}</span>
+                  <span className='flex items-center'><Clock className="w-4 h-4 mr-2" />{repo.lastCommit}</span>
+                </div>
+                <Separator orientation="horizontal" className="my-2" />
+                <div className="flex flex-wrap gap-5 mt-2 text-sm text-muted-foreground">
+                  <span className='flex items-center'><GitCommit className="w-4 h-4 mr-2" />{repo.totalCommits}</span>
+                  <span className='flex items-center'><FileText className="w-4 h-4 mr-2" />{repo.fileCount}</span>
+                  <span className='flex items-center'><Users className="w-4 h-4 mr-2" />{repo.contributors}</span>
+                  <span className='ml-auto'>{repo.path.length > 20 ? `...${repo.path.substring(repo.path.length - 20)}` : repo.path}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     </div >
