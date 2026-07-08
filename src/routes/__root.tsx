@@ -43,10 +43,10 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+        <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen} className="h-svh overflow-hidden">
           <AppSidebar />
-          <div className="flex flex-col flex-1 min-h-screen">
-            <header className="p-4 bg-card text-card-foreground">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <header className="shrink-0 p-4 bg-card text-card-foreground">
               <div className="flex gap-2 mt-2">
                 <SearchBar placeholder="Search repos, commits, files..." className="min-w-sm" />
                 <div className="flex items-center gap-3 ml-auto">
@@ -65,8 +65,10 @@ function RootDocument({ children }: { children: ReactNode }) {
                 </div>
               </div>
             </header>
-            <Separator className="border-t border-border" />
-            {children}
+            <Separator className="shrink-0 border-t border-border" />
+            <main className="min-h-0 flex-1 overflow-y-auto">
+              {children}
+            </main>
             <TanStackDevtools
               config={{
                 position: 'bottom-right',
