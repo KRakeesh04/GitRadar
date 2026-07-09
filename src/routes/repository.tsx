@@ -128,7 +128,6 @@ const repoList = [
 function RouteComponent() {
   const [filter, setFilter] = useState<RepositorySearchFilter>(RepositorySearchFilter.All);
   const [activeDropdownFilter, setActiveDropdownFilter] = useState<RepositoryDropdownFilter>(RepositoryDropdownFilter.RecentlyAccessed);
-  const [activeDropdownFilterValue, setActiveDropdownFilterValue] = useState<string>(RepositoryDropdownFilter.RecentlyAccessed);
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
   if (pathname.replace(/\/$/, '') !== '/repository') {
@@ -160,7 +159,6 @@ function RouteComponent() {
             <DropdownMenu>
               <DropdownMenuTrigger render={
                 <Button
-                  onClick={() => setActiveDropdownFilterValue(activeDropdownFilter)}
                   variant="outline"
                   className={'w-full text-left cursor-pointer'}
                 >
@@ -173,8 +171,7 @@ function RouteComponent() {
                   <DropdownMenuItem
                     key={option.value}
                     onClick={() => setActiveDropdownFilter(option.value)}
-                    onFocus={() => setActiveDropdownFilterValue(option.value)}
-                    className={`focus:bg-(--brand-low) cursor-pointer ${activeDropdownFilterValue === option.value ? 'bg-(--brand-low)' : ''}`}
+                    className={`cursor-pointer ${activeDropdownFilter === option.value ? 'bg-(--brand-low) focus:bg-(--brand-low)' : 'focus:bg-muted '}`}
                   >
                     {option.label}
                   </DropdownMenuItem>

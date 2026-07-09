@@ -5,7 +5,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarGroupContent, SidebarHea
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Separator } from "./ui/separator";
 import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { useTheme } from "#/contexts/ThemeContext";
 
 interface SidebarmenuItem {
   name: string;
@@ -89,16 +89,11 @@ const sidebarContentItems: SidebarContentItem[] = [
 
 export function AppSidebar() {
   const location = useLocation();
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { theme, setTheme } = useTheme();
   const { toggleSidebar, open } = useSidebar();
 
-  useEffect(() => {
-    setIsDarkMode(document.documentElement.classList.contains("dark"));
-  }, []);
-
   const toggleTheme = () => {
-    document.documentElement.classList.toggle("dark");
-    setIsDarkMode(document.documentElement.classList.contains("dark"));
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
@@ -120,8 +115,8 @@ export function AppSidebar() {
         </button>
       </SidebarHeader>
       <Separator className="bg-sidebar-border" />
-      <SidebarContent className="bg-sidebar">
-        <SidebarGroupContent className="px-2 py-2">
+      <SidebarContent className="min-h-0 overflow-hidden bg-sidebar">
+        <SidebarGroupContent className="shrink-0 px-2 py-2">
           <SidebarMenu className="gap-1">
             {sidebarMenuItems.map((item) => (
               <SidebarMenuItem key={item.name}>
@@ -141,9 +136,9 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroupContent>
         <Separator className="bg-sidebar-border" />
-        <SidebarGroupContent className="px-3 py-2 group-data-[collapsible=icon]:hidden">
-          <Tabs defaultValue="recent" className="w-full gap-3">
-            <TabsList className="h-8 w-fit grid-cols-2 bg-muted/50 p-0">
+        <SidebarGroupContent className="min-h-0 flex-1 px-3 py-2 group-data-[collapsible=icon]:hidden">
+          <Tabs defaultValue="recent" className="flex h-full min-h-0 w-full flex-col gap-3">
+            <TabsList className="h-8 w-fit shrink-0 grid-cols-2 bg-muted/50 p-0">
               {sidebarContentItems.map((item) => (
                 <TabsTrigger key={item.name} value={item.name.toLowerCase()} className="h-8 rounded-md px-2.5 text-sm">
                   {item.icon}
@@ -152,8 +147,8 @@ export function AppSidebar() {
               ))}
             </TabsList>
             {sidebarContentItems.map((item) => (
-              <TabsContent key={item.name} value={item.name.toLowerCase()} className="mt-0">
-                <div className="space-y-4 overflow-y-auto">
+              <TabsContent key={item.name} value={item.name.toLowerCase()} className="mt-0 min-h-0 flex-1 overflow-hidden">
+                <div className="h-full space-y-4 overflow-y-auto pr-1">
                   {item.list.map((repo) => (
                     <a
                       key={`${item.name}-${repo.name}`}
@@ -189,8 +184,8 @@ export function AppSidebar() {
               onClick={toggleTheme}
               className="h-9 rounded-md px-3 text-sm font-normal hover:bg-muted/70 cursor-pointer"
             >
-              {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              <span>{isDarkMode ? "Light Mode" : "Dark Mode"}</span>
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

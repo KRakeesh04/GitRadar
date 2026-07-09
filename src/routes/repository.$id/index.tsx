@@ -1,4 +1,3 @@
-import { OverallFilesExplorer } from '#/components/overall-files-previewer';
 import { ReadmeViewer } from '#/components/readme-previewer';
 import { Card } from '#/components/ui/card';
 import { createFileRoute } from '@tanstack/react-router'
@@ -58,8 +57,9 @@ function RouteComponent() {
           <span className="font-semibold">Last commits</span>
         </Card>
       </div>
-      <OverallFilesExplorer />
-      <ReadmeViewer content={readmeContent} />
+      <Card className="overflow-hidden">
+        <ReadmeViewer content={readmeContent} />
+      </Card>
     </div>
   );
 }

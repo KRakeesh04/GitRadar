@@ -34,6 +34,23 @@ const languageColors: Record<string, string> = {
   Rust: "bg-orange-500",
   Go: "bg-cyan-500",
   Python: "bg-green-500",
+  Ruby: "bg-red-500",
+  C: "bg-gray-500",
+  Cpp: "bg-gray-500",
+  Java: "bg-red-600",
+  PHP: "bg-purple-500",
+  Swift: "bg-orange-400",
+  Kotlin: "bg-purple-400",
+  Dart: "bg-blue-400",
+  Scala: "bg-red-400",
+  Haskell: "bg-purple-600",
+  Lua: "bg-blue-300",
+  Perl: "bg-blue-600",
+  R: "bg-blue-700",
+  Shell: "bg-green-700",
+  HTML: "bg-orange-300",
+  CSS: "bg-blue-200",
+  SQL: "bg-blue-800",
   Other: "bg-gray-500",
 }
 
@@ -74,17 +91,17 @@ export function RepositoryMetadataBar({ repoId }: { repoId: string }) {
           <span className='flex items-center'><GitCommit className="w-4 h-4 mr-2" />{repoInfo.totalCommits}</span>
           <span className='flex items-center'><FileText className="w-4 h-4 mr-2" />{repoInfo.fileCount}</span>
           <span className='flex items-center'><Users className="w-4 h-4 mr-2" />{repoInfo.contributors}</span>
-          <span className='flex items-center'><Clock className="w-4 h-4 mr-2" />{repoInfo.lastCommit}</span>
+          <span className='flex items-center text-sm'><Clock className="w-4 h-4 mr-2" />{repoInfo.lastCommit}</span>
         </div>
       </div>
-      <div className="flex-1 flex-col gap-2 items-left">
+      <div className="flex-1 flex-col gap-2 items-left w-auto max-w-100 min-w-50">
         <span className="text-lg font-semibold">Languages</span>
         <LanguageBar languages={languagesDetails} className="w-auto max-w-100 min-w-50" />
         <div className="flex flex-wrap gap-2 max-w-120 w-auto">
           {languagesDetails.map((lang) => (
             <div key={lang.name} className="flex items-center gap-2">
-              <div className={`w-4 h-4 rounded-full ${languageColors[lang.name]}`} />
-              <span>{lang.name}</span>
+              <div className={`w-2 h-2 rounded-full ${languageColors[lang.name]}`} />
+              <span className="text-sm">{lang.name}</span>
               <span className="text-sm text-muted-foreground">{lang.percentage}%</span>
             </div>
           ))}
