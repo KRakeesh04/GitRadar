@@ -2,7 +2,7 @@ use serde::Serialize;
 use tauri::State;
 
 use crate::{
-    domain::Commit,
+    domain::{commit::CommitGraphNode, Commit},
     infrastructure::{
         database::connection::get_connection,
         git::{CommitDiff, CommitInlineDiff, FileDiff},
@@ -29,6 +29,21 @@ pub struct CommitResponse {
     pub is_root_commit: bool,
 }
 
+#[derive(Debug, Serialize)]
+pub struct CommitGraphNodeResponse {
+    pub hash: String,
+    pub branch_name: Option<String>,
+    pub branch_names: Vec<String>,
+    pub author_name: String,
+    pub author_email: String,
+    pub subject: String,
+    pub committed_at: String,
+    pub additions: i32,
+    pub deletions: i32,
+    pub total_changed_files_count: i32,
+    pub parent_hashes: Vec<String>,
+}
+
 impl From<Commit> for CommitResponse {
     fn from(c: Commit) -> Self {
         let merge = c.is_merge_commit();
@@ -48,6 +63,24 @@ impl From<Commit> for CommitResponse {
             is_significant: c.is_significant,
             is_merge_commit: merge,
             is_root_commit: root,
+        }
+    }
+}
+
+impl From<CommitGraphNode> for CommitGraphNodeResponse {
+    fn from(node: CommitGraphNode) -> Self {
+        Self {
+            branch_name: node.branches.first().cloned(),
+            branch_names: node.branches,
+            hash: node.hash,
+            author_name: node.author_name,
+            author_email: node.author_email,
+            subject: node.subject,
+            committed_at: node.committed_at,
+            additions: node.total_additions,
+            deletions: node.total_deletions,
+            total_changed_files_count: node.total_files_changed,
+            parent_hashes: node.parents,
         }
     }
 }
@@ -74,6 +107,24 @@ pub fn get_commit_by_hash(
     let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
     commit_service::get_commit_by_hash(&conn, repo_id, &hash)
         .map(CommitResponse::from)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_commit_graph(
+    repo_id: i64,
+    limit: Option<usize>,
+    offset: Option<usize>,
+    state: State<'_, AppState>,
+) -> Result<Vec<CommitGraphNodeResponse>, String> {
+    let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
+    commit_service::get_commit_graph(&conn, repo_id, limit.unwrap_or(50), offset.unwrap_or(0))
+        .map(|commits| {
+            commits
+                .into_iter()
+                .map(CommitGraphNodeResponse::from)
+                .collect()
+        })
         .map_err(|e| e.to_string())
 }
 

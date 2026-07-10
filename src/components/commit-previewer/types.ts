@@ -55,3 +55,17 @@ export interface InlineDiffLine {
   content: string;
   line_type: DiffLineType;
 }
+
+export interface CommitGraphNode {
+  hash: string;
+  branch_name?: string | null;
+  branch_names?: string[];
+  author_name: string;
+  author_email: string;
+  subject: string;
+  committed_at: string;
+  additions: number;
+  deletions: number;
+  total_changed_files_count: number;
+  parent_hashes: string[];
+}
