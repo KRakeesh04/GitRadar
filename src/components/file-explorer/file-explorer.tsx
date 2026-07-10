@@ -25,7 +25,7 @@ export default function FileExplorer({
   const [activeBranch, setActiveBranch] = useState<string>(branches[0] || "");
 
   return (
-    <aside className="flex h-full w-72 flex-col border-r bg-card">
+    <aside className="flex h-full w-50 lg:55 xl:w-72 flex-col border-r bg-card">
       {/* Header */}
       <div className="flex items-center gap-2 border-b px-3 py-2 font-medium h-12.25">
         <DropdownMenu>
