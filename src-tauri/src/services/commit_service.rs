@@ -8,7 +8,7 @@ use crate::{
             models::commit::CommitGraphNode as DatabaseCommitGraphNode,
             repositories::{commits, repositories},
         },
-        git::{self, CommitDiff, FileDiff},
+        git::{self, CommitDiff, CommitInlineDiff, FileDiff},
     },
 };
 
@@ -62,6 +62,16 @@ pub fn get_commit_diff(
     let repo_path = get_repo_path(conn, repo_id)?;
 
     git::file::get_commit_diff(&repo_path, commit_hash).map_err(DomainError::InvalidCommit)
+}
+
+pub fn get_commit_inline_diff(
+    conn: &Connection,
+    repo_id: i64,
+    commit_hash: &str,
+) -> DomainResult<CommitInlineDiff> {
+    let repo_path = get_repo_path(conn, repo_id)?;
+
+    git::file::get_commit_inline_diff(&repo_path, commit_hash).map_err(DomainError::InvalidCommit)
 }
 
 pub fn get_file_diff_by_commit_hash(

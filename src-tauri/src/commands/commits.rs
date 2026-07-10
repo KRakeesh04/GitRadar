@@ -5,7 +5,7 @@ use crate::{
     domain::Commit,
     infrastructure::{
         database::connection::get_connection,
-        git::{CommitDiff, FileDiff},
+        git::{CommitDiff, CommitInlineDiff, FileDiff},
     },
     services::commit_service,
     state::AppState,
@@ -85,6 +85,16 @@ pub fn get_commit_diff(
 ) -> Result<CommitDiff, String> {
     let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
     commit_service::get_commit_diff(&conn, repo_id, &commit_hash).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_commit_inline_diff(
+    repo_id: i64,
+    commit_hash: String,
+    state: State<'_, AppState>,
+) -> Result<CommitInlineDiff, String> {
+    let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
+    commit_service::get_commit_inline_diff(&conn, repo_id, &commit_hash).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

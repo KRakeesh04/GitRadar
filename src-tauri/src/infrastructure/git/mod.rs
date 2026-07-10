@@ -130,6 +130,12 @@ pub struct CommitDiff {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CommitInlineDiff {
+    pub commit_hash: String,
+    pub files: Vec<InlineFileDiff>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct FileDiff {
     pub old_path: Option<String>,
     pub new_path: String,
@@ -154,6 +160,22 @@ pub struct DiffLine {
     pub old_line_number: Option<u32>,
     pub new_line_number: Option<u32>,
     pub content: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct InlineFileDiff {
+    pub old_path: Option<String>,
+    pub new_path: String,
+    pub change_type: ChangeType,
+    pub lines: Vec<InlineDiffLine>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct InlineDiffLine {
+    pub old_line_number: Option<u32>,
+    pub new_line_number: Option<u32>,
+    pub content: String,
+    pub line_type: DiffLineType,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
