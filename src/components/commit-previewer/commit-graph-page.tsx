@@ -3,13 +3,13 @@ import { useMemo } from 'react';
 
 import { Spinner } from '#/components/ui/spinner';
 
-import { CommitDetailsPanel } from './commit-details';
 import {
   useCommitGraphInfinite,
   useCommitGraphLayout,
   useLastRowObserver,
 } from './commit-graph-hooks';
 import { CommitGraphList } from './commit-list';
+import { CommitDetailsPanel } from './commit-details';
 
 const PAGE_SIZE = 50;
 
