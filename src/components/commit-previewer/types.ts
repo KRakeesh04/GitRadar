@@ -1,18 +1,15 @@
-export type ChangeType =
-  | "Added"
-  | "Modified"
-  | "Deleted"
-  | "Renamed"
-  | "Copied";
+export type ChangeType = 'Added' | 'Modified' | 'Deleted' | 'Renamed' | 'Copied';
 
-export type DiffLineType =
-  | "Context"
-  | "Added"
-  | "Removed";
+export type DiffLineType = 'Context' | 'Added' | 'Removed';
 
 export interface CommitDiff {
   commit_hash: string;
   files: FileDiff[];
+}
+
+export interface CommitInlineDiff {
+  commit_hash: string;
+  files: InlineFileDiff[];
 }
 
 export interface FileDiff {
@@ -43,4 +40,18 @@ export interface DiffLine {
   new_line_number?: number | null;
 
   content: string;
+}
+
+export interface InlineFileDiff {
+  old_path?: string | null;
+  new_path: string;
+  change_type: ChangeType;
+  lines: InlineDiffLine[];
+}
+
+export interface InlineDiffLine {
+  old_line_number?: number | null;
+  new_line_number?: number | null;
+  content: string;
+  line_type: DiffLineType;
 }
