@@ -62,7 +62,7 @@ function RootDocument({ children }: { children: ReactNode }) {
                       <Bell className="w-5 h-5 cursor-pointer" />
                     </Button>
                     <Button variant="default" className="cursor-pointer bg-(--brand) hover:bg-(--brand-hover) text-white">
-                      + Add Repository
+                      + Add Root Path
                     </Button>
                   </div>
                 </div>

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as RootPathsRouteImport } from './routes/root-paths'
 import { Route as RepositoryRouteImport } from './routes/repository'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
@@ -30,6 +31,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RootPathsRoute = RootPathsRouteImport.update({
+  id: '/root-paths',
+  path: '/root-paths',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RepositoryRoute = RepositoryRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/repository': typeof RepositoryRouteWithChildren
+  '/root-paths': typeof RootPathsRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/repository/$id': typeof RepositoryIdRouteRouteWithChildren
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/repository': typeof RepositoryRouteWithChildren
+  '/root-paths': typeof RootPathsRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/repository/$id/commits': typeof RepositoryIdCommitsRouteRouteWithChildren
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/repository': typeof RepositoryRouteWithChildren
+  '/root-paths': typeof RootPathsRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/repository/$id': typeof RepositoryIdRouteRouteWithChildren
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/repository'
+    | '/root-paths'
     | '/search'
     | '/settings'
     | '/repository/$id'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/repository'
+    | '/root-paths'
     | '/search'
     | '/settings'
     | '/repository/$id/commits'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/repository'
+    | '/root-paths'
     | '/search'
     | '/settings'
     | '/repository/$id'
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
   RepositoryRoute: typeof RepositoryRouteWithChildren
+  RootPathsRoute: typeof RootPathsRoute
   SearchRoute: typeof SearchRoute
   SettingsRoute: typeof SettingsRoute
 }
@@ -193,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/root-paths': {
+      id: '/root-paths'
+      path: '/root-paths'
+      fullPath: '/root-paths'
+      preLoaderRoute: typeof RootPathsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/repository': {
@@ -317,6 +337,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   RepositoryRoute: RepositoryRouteWithChildren,
+  RootPathsRoute: RootPathsRoute,
   SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
 }

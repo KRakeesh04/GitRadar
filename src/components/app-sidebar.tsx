@@ -1,4 +1,4 @@
-import { Bell, Clock, FolderGit2, FolderOpen, GitBranch, LayoutDashboard, Moon, PanelLeftClose, PanelRightClose, Search, Settings, Star, Sun } from "lucide-react";
+import { Bell, Clock, FolderGit2, FolderOpen, GitBranch, HardDrive, LayoutDashboard, Moon, PanelLeftClose, PanelRightClose, Search, Settings, Star, Sun } from "lucide-react";
 import { useLocation } from "@tanstack/react-router";
 
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "./ui/sidebar";
@@ -52,6 +52,12 @@ const sidebarMenuItems: SidebarmenuItem[] = [
     link: '/activity',
     match: ['/activity'],
     indicator: true,
+  },
+  {
+    name: 'Root Paths',
+    icon: <HardDrive className="w-4 h-4" />,
+    link: '/root-paths',
+    match: ['/root-paths'],
   }
 ];
 
