@@ -1,11 +1,20 @@
 import { Button } from '#/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '#/components/ui/collapsible';
+import { Input } from '#/components/ui/input';
+import {
+  consumeAddRootPathPopoverRequest,
+  OPEN_ADD_ROOT_PATH_EVENT,
+  requestAddRootPathPopover,
+} from '#/lib/root-path-actions';
+import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
   Folder,
+  FolderPlus,
   GitBranch,
   HardDrive,
   Pencil,
@@ -14,7 +23,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export const Route = createFileRoute('/root-paths')({
   component: RouteComponent,
@@ -36,6 +45,13 @@ type RootPath = {
   path: string;
   updatedLabel: string;
   repos: RootRepository[];
+};
+
+type TrackedRootResponse = {
+  id: number;
+  path: string;
+  is_enabled: boolean;
+  updated_at: string;
 };
 
 const rootPathsData: RootPath[] = [
@@ -100,9 +116,62 @@ const rootPathsData: RootPath[] = [
 ];
 
 function RouteComponent() {
+  const [rootPaths, setRootPaths] = useState<RootPath[]>(rootPathsData);
   const [expandedPathId, setExpandedPathId] = useState<string | null>('work-apps');
   const [editingPathId, setEditingPathId] = useState<string | null>(null);
   const [deletingPathId, setDeletingPathId] = useState<string | null>(null);
+  const [isAddPopoverOpen, setIsAddPopoverOpen] = useState(false);
+
+  useEffect(() => {
+    const loadRootPaths = async () => {
+      try {
+        const trackedRoots = await invoke<TrackedRootResponse[]>('get_all_tracked_root_paths');
+
+        setRootPaths(
+          trackedRoots.map(root => ({
+            id: String(root.id),
+            name: getPathLabel(root.path),
+            path: root.path,
+            updatedLabel: root.updated_at,
+            repos: [],
+          }))
+        );
+      } catch (error) {
+        console.error('Failed to load tracked root paths', error);
+      }
+    };
+
+    void loadRootPaths();
+  }, []);
+
+  useEffect(() => {
+    const openPopover = () => setIsAddPopoverOpen(true);
+
+    window.addEventListener(OPEN_ADD_ROOT_PATH_EVENT, openPopover);
+
+    if (consumeAddRootPathPopoverRequest()) {
+      openPopover();
+    }
+
+    return () => window.removeEventListener(OPEN_ADD_ROOT_PATH_EVENT, openPopover);
+  }, []);
+
+  const addRootPath = async ({ path, name }: { path: string; name: string }) => {
+    const id = await invoke<number>('add_tracked_root_path', { path });
+
+    const nextRootPath: RootPath = {
+      id: String(id),
+      name,
+      path,
+      updatedLabel: 'just now',
+      repos: [],
+    };
+
+    setRootPaths(current => [nextRootPath, ...current]);
+    setExpandedPathId(nextRootPath.id);
+    setEditingPathId(null);
+    setDeletingPathId(null);
+  };
 
   return (
     <div className="flex h-full w-full flex-col gap-4 overflow-y-auto bg-muted/20 py-4">
@@ -120,6 +189,7 @@ function RouteComponent() {
           <Button
             variant="default"
             className="cursor-pointer bg-(--brand) py-4 text-white hover:bg-(--brand-hover)"
+            onClick={() => requestAddRootPathPopover()}
           >
             + Add Path
           </Button>
@@ -128,12 +198,12 @@ function RouteComponent() {
 
       <div className="flex w-full gap-4 border-b px-10 pb-4 lg:px-20">
         <div className="flex w-full flex-col items-center gap-1 rounded-md border border-border p-4">
-          <span className="text-lg font-medium">{rootPathsData.length}</span>
+          <span className="text-lg font-medium">{rootPaths.length}</span>
           <span className="text-sm text-muted-foreground">Total Root Paths</span>
         </div>
         <div className="flex w-full flex-col items-center gap-1 rounded-md border border-border p-4">
           <span className="text-lg font-medium">
-            {rootPathsData.reduce((acc, rootPath) => acc + rootPath.repos.length, 0)}
+            {rootPaths.reduce((acc, rootPath) => acc + rootPath.repos.length, 0)}
           </span>
           <span className="text-sm text-muted-foreground">Total Repositories</span>
         </div>
@@ -147,8 +217,8 @@ function RouteComponent() {
         </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-        {rootPathsData.map(rootPath => {
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-10 lg:px-20">
+        {rootPaths.map(rootPath => {
           if (editingPathId === rootPath.id) {
             return (
               <EditRootPathCard
@@ -190,6 +260,173 @@ function RouteComponent() {
             />
           );
         })}
+      </div>
+
+      <AddRootPathPopover
+        open={isAddPopoverOpen}
+        onOpenChange={setIsAddPopoverOpen}
+        onAdd={addRootPath}
+      />
+    </div>
+  );
+}
+
+function getPathLabel(path: string) {
+  return path.split(/[\\/]/).filter(Boolean).at(-1) || path;
+}
+
+function AddRootPathPopover({
+  open: isOpen,
+  onOpenChange,
+  onAdd,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAdd: (rootPath: { path: string; name: string }) => Promise<void>;
+}) {
+  const [path, setPath] = useState('');
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPath('');
+      setName('');
+      setError(null);
+      setIsSelecting(false);
+      setIsSaving(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const selectFolder = async () => {
+    setError(null);
+    setIsSelecting(true);
+
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: 'Select root path',
+      });
+
+      if (typeof selected === 'string') {
+        setPath(selected);
+        setName(current => current || getPathLabel(selected));
+      }
+    } catch (selectError) {
+      setError(
+        selectError instanceof Error ? selectError.message : 'Could not open folder picker.'
+      );
+    } finally {
+      setIsSelecting(false);
+    }
+  };
+
+  const submit = async () => {
+    const trimmedPath = path.trim();
+    const trimmedName = name.trim();
+
+    if (!trimmedPath) {
+      setError('Select a folder before adding a root path.');
+      return;
+    }
+
+    setError(null);
+    setIsSaving(true);
+
+    try {
+      await onAdd({
+        path: trimmedPath,
+        name: trimmedName || getPathLabel(trimmedPath),
+      });
+      onOpenChange(false);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Could not add root path.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 px-4 pt-24 backdrop-blur-xs">
+      <div className="w-full max-w-lg rounded-lg border border-border bg-popover p-5 text-popover-foreground shadow-xl">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-(--brand)/15 text-(--brand)">
+            <FolderPlus className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-semibold">Add root path</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Choose a directory GitRadar should scan for repositories.
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Close"
+            onClick={() => onOpenChange(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="mt-5 grid gap-4">
+          <label className="grid gap-1.5 text-sm font-medium">
+            Root folder
+            <div className="flex gap-2">
+              <Input
+                className="h-9 font-mono"
+                value={path}
+                onChange={event => setPath(event.target.value)}
+                placeholder="/home/user/projects"
+              />
+              <Button
+                variant="outline"
+                className="h-9"
+                onClick={selectFolder}
+                disabled={isSelecting}
+              >
+                <Folder className="h-4 w-4" />
+                {isSelecting ? 'Opening' : 'Browse'}
+              </Button>
+            </div>
+          </label>
+
+          <label className="grid gap-1.5 text-sm font-medium">
+            Label
+            <Input
+              className="h-9"
+              value={name}
+              onChange={event => setName(event.target.value)}
+              placeholder="Projects"
+            />
+          </label>
+
+          {error ? (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600">
+              {error}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            className="bg-(--brand) text-white hover:bg-(--brand-hover)"
+            onClick={submit}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Adding' : 'Add root path'}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,10 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router';
+import {
+  HeadContent,
+  Scripts,
+  createRootRoute,
+  useNavigate,
+  useRouterState,
+} from '@tanstack/react-router';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 import { TanStackDevtools } from '@tanstack/react-devtools';
 
@@ -11,6 +17,7 @@ import { SidebarProvider } from '#/components/ui/sidebar';
 import { useState, type ReactNode } from 'react';
 import { SearchBar } from '#/components/searchbar';
 import { ThemeProvider } from '#/contexts/ThemeContext';
+import { requestAddRootPathPopover } from '#/lib/root-path-actions';
 
 export const Route = createRootRoute({
   head: () => ({
@@ -38,6 +45,17 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: state => state.location.pathname });
+
+  const handleAddRootPath = () => {
+    requestAddRootPathPopover({ persist: pathname !== '/root-paths' });
+
+    if (pathname !== '/root-paths') {
+      void navigate({ to: '/root-paths' });
+    }
+  };
+
   return (
     <html lang="en">
       <head>
@@ -45,32 +63,47 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         <ThemeProvider>
-          <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen} className="h-svh overflow-hidden">
+          <SidebarProvider
+            open={isSidebarOpen}
+            onOpenChange={setIsSidebarOpen}
+            className="h-svh overflow-hidden"
+          >
             <AppSidebar />
             <div className="flex min-h-0 flex-1 flex-col">
               <header className="shrink-0 p-4 bg-card text-card-foreground">
                 <div className="flex gap-2 mt-2">
                   <SearchBar placeholder="Search repos, commits, files..." className="min-w-sm" />
                   <div className="flex items-center gap-3 ml-auto">
-                    <Button variant="default" className="ml-2 cursor-pointer bg-background hover:bg-(--brand) hover:text-background text-foreground border border-input">
+                    <Button
+                      variant="default"
+                      className="ml-2 cursor-pointer bg-background hover:bg-(--brand) hover:text-background text-foreground border border-input"
+                    >
                       <RefreshCcw className="w-5 h-5 cursor-pointer" />
                     </Button>
-                    <Button variant="default" className="cursor-pointer bg-background hover:bg-(--brand) hover:text-background text-foreground border border-input">
+                    <Button
+                      variant="default"
+                      className="cursor-pointer bg-background hover:bg-(--brand) hover:text-background text-foreground border border-input"
+                    >
                       <GitPullRequest className="w-5 h-5 cursor-pointer" />
                     </Button>
-                    <Button variant="default" className="cursor-pointer bg-background hover:bg-(--brand) hover:text-background text-foreground border border-input">
+                    <Button
+                      variant="default"
+                      className="cursor-pointer bg-background hover:bg-(--brand) hover:text-background text-foreground border border-input"
+                    >
                       <Bell className="w-5 h-5 cursor-pointer" />
                     </Button>
-                    <Button variant="default" className="cursor-pointer bg-(--brand) hover:bg-(--brand-hover) text-white">
+                    <Button
+                      variant="default"
+                      className="cursor-pointer bg-(--brand) hover:bg-(--brand-hover) text-white"
+                      onClick={handleAddRootPath}
+                    >
                       + Add Root Path
                     </Button>
                   </div>
                 </div>
               </header>
               <Separator className="shrink-0 border-t border-border" />
-              <main className="min-h-0 flex-1 overflow-y-auto">
-                {children}
-              </main>
+              <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
               <TanStackDevtools
                 config={{
                   position: 'bottom-right',
