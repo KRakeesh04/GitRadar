@@ -1,11 +1,36 @@
-import { Bell, Clock, FolderGit2, FolderOpen, GitBranch, HardDrive, LayoutDashboard, Moon, PanelLeftClose, PanelRightClose, Search, Settings, Star, Sun } from "lucide-react";
-import { useLocation } from "@tanstack/react-router";
+import {
+  Bell,
+  Clock,
+  FolderGit2,
+  FolderOpen,
+  GitBranch,
+  HardDrive,
+  LayoutDashboard,
+  Moon,
+  PanelLeftClose,
+  PanelRightClose,
+  Search,
+  Settings,
+  Star,
+  Sun,
+} from 'lucide-react';
+import { useLocation } from '@tanstack/react-router';
 
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "./ui/sidebar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Separator } from "./ui/separator";
-import { cn } from "@/lib/utils";
-import { useTheme } from "#/contexts/ThemeContext";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from './ui/sidebar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Separator } from './ui/separator';
+import { cn } from '@/lib/utils';
+import { useTheme } from '#/contexts/ThemeContext';
 
 interface SidebarmenuItem {
   name: string;
@@ -24,7 +49,7 @@ interface SidebarContentItem {
 interface RepositoryItem {
   name: string;
   branch: string;
-  status: "warning" | "healthy";
+  status: 'warning' | 'healthy';
 }
 
 const sidebarMenuItems: SidebarmenuItem[] = [
@@ -58,7 +83,7 @@ const sidebarMenuItems: SidebarmenuItem[] = [
     icon: <HardDrive className="w-4 h-4" />,
     link: '/root-paths',
     match: ['/root-paths'],
-  }
+  },
 ];
 
 const sidebarContentItems: SidebarContentItem[] = [
@@ -66,40 +91,40 @@ const sidebarContentItems: SidebarContentItem[] = [
     name: 'Recent',
     icon: <Clock className="w-4 h-4" />,
     list: [
-      { name: "gitradar", branch: "main", status: "warning" },
-      { name: "web-dashboard", branch: "develop", status: "healthy" },
-      { name: "api-server", branch: "feature/auth", status: "warning" },
-      { name: "mobile-app", branch: "main", status: "healthy" },
-      { name: "design-system", branch: "main", status: "healthy" },
-      { name: "gitradar", branch: "main", status: "warning" },
-      { name: "web-dashboard", branch: "develop", status: "healthy" },
-      { name: "api-server", branch: "feature/auth", status: "warning" },
-      { name: "mobile-app", branch: "main", status: "healthy" },
-      { name: "design-system", branch: "main", status: "healthy" },
+      { name: 'gitradar', branch: 'main', status: 'warning' },
+      { name: 'web-dashboard', branch: 'develop', status: 'healthy' },
+      { name: 'api-server', branch: 'feature/auth', status: 'warning' },
+      { name: 'mobile-app', branch: 'main', status: 'healthy' },
+      { name: 'design-system', branch: 'main', status: 'healthy' },
+      { name: 'gitradar', branch: 'main', status: 'warning' },
+      { name: 'web-dashboard', branch: 'develop', status: 'healthy' },
+      { name: 'api-server', branch: 'feature/auth', status: 'warning' },
+      { name: 'mobile-app', branch: 'main', status: 'healthy' },
+      { name: 'design-system', branch: 'main', status: 'healthy' },
     ],
   },
   {
     name: 'Starred',
     icon: <Star className="w-4 h-4" />,
     list: [
-      { name: "gitradar", branch: "main", status: "warning" },
-      { name: "api-server", branch: "feature/auth", status: "warning" },
-      { name: "gitradar", branch: "main", status: "warning" },
-      { name: "web-dashboard", branch: "develop", status: "healthy" },
-      { name: "api-server", branch: "feature/auth", status: "warning" },
-      { name: "mobile-app", branch: "main", status: "healthy" },
-      { name: "design-system", branch: "main", status: "healthy" },
+      { name: 'gitradar', branch: 'main', status: 'warning' },
+      { name: 'api-server', branch: 'feature/auth', status: 'warning' },
+      { name: 'gitradar', branch: 'main', status: 'warning' },
+      { name: 'web-dashboard', branch: 'develop', status: 'healthy' },
+      { name: 'api-server', branch: 'feature/auth', status: 'warning' },
+      { name: 'mobile-app', branch: 'main', status: 'healthy' },
+      { name: 'design-system', branch: 'main', status: 'healthy' },
     ],
-  }
+  },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const { toggleSidebar, open } = useSidebar();
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
 
   return (
@@ -108,7 +133,9 @@ export function AppSidebar() {
         <div className="w-9 h-9 bg-(--brand) rounded-lg flex items-center justify-center shrink-0 ml-0.5 group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:group-hover:hidden transition-colors">
           <FolderGit2 className="text-white" size={25} />
         </div>
-        <span className="text-sidebar-foreground text-2xl font-bold group-data-[collapsible=icon]:hidden">GitRadar</span>
+        <span className="text-sidebar-foreground text-2xl font-bold group-data-[collapsible=icon]:hidden">
+          GitRadar
+        </span>
         <button
           className="ml-auto text-sidebar-foreground cursor-pointer group-data-[collapsible=icon]:absolute left-3.5"
           onClick={toggleSidebar}
@@ -124,16 +151,26 @@ export function AppSidebar() {
       <SidebarContent className="min-h-0 overflow-hidden bg-sidebar">
         <SidebarGroupContent className="shrink-0 px-2 py-2">
           <SidebarMenu className="gap-1">
-            {sidebarMenuItems.map((item) => (
+            {sidebarMenuItems.map(item => (
               <SidebarMenuItem key={item.name}>
                 <SidebarMenuButton
-                  isActive={item.match.some((path) => location.pathname === path || (path !== "/" && location.pathname.startsWith(path)))}
+                  isActive={item.match.some(
+                    path =>
+                      location.pathname === path ||
+                      (path !== '/' && location.pathname.startsWith(path))
+                  )}
                   className="h-9 rounded-md px-3 text-sm font-normal data-active:bg-(--brand) data-active:text-white data-active:hover:bg-(--brand) data-active:hover:text-white"
                   render={
                     <a href={item.link}>
-                      {!open && item.indicator ? <span className="text-(--brand)">{item.icon}</span> : item.icon}
+                      {!open && item.indicator ? (
+                        <span className="text-(--brand)">{item.icon}</span>
+                      ) : (
+                        item.icon
+                      )}
                       <span>{item.name}</span>
-                      {item.indicator ? <span className="ml-auto h-2 w-2 rounded-full bg-(--brand)" /> : null}
+                      {item.indicator ? (
+                        <span className="ml-auto h-2 w-2 rounded-full bg-(--brand)" />
+                      ) : null}
                     </a>
                   }
                 />
@@ -145,17 +182,25 @@ export function AppSidebar() {
         <SidebarGroupContent className="min-h-0 flex-1 px-3 py-2 group-data-[collapsible=icon]:hidden">
           <Tabs defaultValue="recent" className="flex h-full min-h-0 w-full flex-col gap-3">
             <TabsList className="h-8 w-fit shrink-0 grid-cols-2 bg-muted/50 p-0">
-              {sidebarContentItems.map((item) => (
-                <TabsTrigger key={item.name} value={item.name.toLowerCase()} className="h-8 rounded-md px-2.5 text-sm">
+              {sidebarContentItems.map(item => (
+                <TabsTrigger
+                  key={item.name}
+                  value={item.name.toLowerCase()}
+                  className="h-8 rounded-md px-2.5 text-sm"
+                >
                   {item.icon}
                   <span>{item.name}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
-            {sidebarContentItems.map((item) => (
-              <TabsContent key={item.name} value={item.name.toLowerCase()} className="mt-0 min-h-0 flex-1 overflow-hidden">
+            {sidebarContentItems.map(item => (
+              <TabsContent
+                key={item.name}
+                value={item.name.toLowerCase()}
+                className="mt-0 min-h-0 flex-1 overflow-hidden"
+              >
                 <div className="h-full space-y-4 overflow-y-auto pr-1">
-                  {item.list.map((repo) => (
+                  {item.list.map(repo => (
                     <a
                       key={`${item.name}-${repo.name}`}
                       href="/repository"
@@ -165,8 +210,8 @@ export function AppSidebar() {
                         <span className="text-sm lg:font-semibold leading-5">{repo.name}</span>
                         <span
                           className={cn(
-                            "h-1.5 w-1.5 rounded-full",
-                            repo.status === "warning" ? "bg-amber-500" : "bg-emerald-500"
+                            'h-1.5 w-1.5 rounded-full',
+                            repo.status === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'
                           )}
                         />
                       </div>
@@ -190,8 +235,12 @@ export function AppSidebar() {
               onClick={toggleTheme}
               className="h-9 rounded-md px-3 text-sm font-normal hover:bg-muted/70 cursor-pointer"
             >
-              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+              {resolvedTheme === 'dark' ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+              <span>{resolvedTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
