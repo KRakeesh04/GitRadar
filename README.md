@@ -1,6 +1,6 @@
 # GitRadar 🚀
 
-**GitRadar** is a Linux-first desktop application that provides deep analytics and insights for your local Git repositories — similar to GitHub insights, but fully offline and focused on your local development workflow.
+**GitRadar** is a desktop application that provides deep analytics and insights for your local Git repositories — similar to GitHub insights, but fully offline and focused on your local development workflow.
 
 ---
 
