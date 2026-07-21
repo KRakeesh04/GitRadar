@@ -200,9 +200,9 @@ export function AppSidebar() {
                 className="mt-0 min-h-0 flex-1 overflow-hidden"
               >
                 <div className="h-full space-y-4 overflow-y-auto pr-1">
-                  {item.list.map(repo => (
+                  {item.list.map((repo, index) => (
                     <a
-                      key={`${item.name}-${repo.name}`}
+                      key={`${item.name}-${repo.name}-${repo.branch}-${index}`}
                       href="/repository"
                       className="block rounded-md px-0.5 py-0.5 text-sidebar-foreground transition-colors hover:text-(--brand)"
                     >
