@@ -64,9 +64,10 @@ fn main() {
             commands::files::get_repo_languages_stats,
             // Analytics commands
             commands::analytics::get_repository_activity,
-            // commands::analytics::get_contributors,
-            // commands::analytics::get_top_contributors,
-            // commands::analytics::get_contributor_by_email,
+            // Contributor commands
+            commands::contributors::get_contributors,
+            commands::contributors::get_top_contributors,
+            commands::contributors::get_contributor_by_email,
             // Sync commands
             commands::sync::sync_repository,
             commands::sync::sync_branches,
