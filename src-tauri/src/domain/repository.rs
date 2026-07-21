@@ -7,6 +7,8 @@ use super::DomainResult;
 pub struct Repository {
     // Identity
     pub id: RepositoryId,
+    pub root_id: i64,
+    pub updated_at: String,
     pub name: String,
     pub path: PathBuf,
     pub git_dir: PathBuf,
@@ -36,11 +38,12 @@ impl Repository {
         default_branch: Option<String>,
         head_branch: Option<String>,
     ) -> DomainResult<Self> {
-        let repo_id =
-            RepositoryId::new(id).map_err(super::DomainError::InvalidRepository)?;
+        let repo_id = RepositoryId::new(id).map_err(super::DomainError::InvalidRepository)?;
 
         Ok(Repository {
             id: repo_id,
+            root_id: 0,
+            updated_at: String::new(),
             name,
             path,
             git_dir,

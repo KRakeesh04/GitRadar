@@ -11,6 +11,8 @@ use crate::{
 #[derive(Debug, Serialize)]
 pub struct RepositoryResponse {
     pub id: i64,
+    pub root_id: i64,
+    pub updated_at: String,
     pub name: String,
     pub path: String,
     pub git_dir: String,
@@ -28,6 +30,8 @@ impl From<Repository> for RepositoryResponse {
     fn from(repository: Repository) -> Self {
         Self {
             id: repository.id.value(),
+            root_id: repository.root_id,
+            updated_at: repository.updated_at,
             name: repository.name,
             path: repository.path.to_string_lossy().into_owned(),
             git_dir: repository.git_dir.to_string_lossy().into_owned(),

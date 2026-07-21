@@ -384,6 +384,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         -- DASHBOARD VIEW
         ------------------------------------------------------------
 
+        DROP VIEW IF EXISTS repository_summary;
+
         CREATE VIEW IF NOT EXISTS repository_summary AS
         SELECT
             r.id,
@@ -391,6 +393,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             r.name,
             r.path,
             r.git_dir_path,
+            r.repo_type,
             h.health_score,
             r.default_branch,
             r.head_branch,

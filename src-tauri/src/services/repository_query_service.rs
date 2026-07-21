@@ -28,6 +28,8 @@ pub fn get_repository_info_by_id(conn: &Connection, repo_id: i64) -> DomainResul
 
     Ok(Repository {
         id: RepositoryId(repo.id),
+        root_id: repo.root_id,
+        updated_at: repo.updated_at,
         name: repo.name,
         path: PathBuf::from(repo.path),
         git_dir: PathBuf::from(repo.git_dir_path),
@@ -63,6 +65,8 @@ pub fn get_all_repositories(
     for repo in repos {
         result.push(Repository {
             id: RepositoryId(repo.id),
+            root_id: repo.root_id,
+            updated_at: repo.updated_at,
             name: repo.name,
             path: PathBuf::from(repo.path),
             git_dir: PathBuf::from(repo.git_dir_path),
