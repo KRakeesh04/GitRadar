@@ -64,6 +64,34 @@ function RootDocument({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (() => {
+                try {
+                  const stored = localStorage.getItem("gitradar-theme");
+
+                  const theme = stored
+                    ? JSON.parse(stored).state.theme
+                    : "system";
+
+                  let resolved = "light";
+
+                  if (theme === "dark") {
+                    resolved = "dark";
+                  } else if (theme === "system") {
+                    resolved = window.matchMedia(
+                      "(prefers-color-scheme: dark)"
+                    ).matches
+                      ? "dark"
+                      : "light";
+                  }
+                  document.documentElement.classList.add(resolved);
+                } catch {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
@@ -81,19 +109,19 @@ function RootDocument({ children }: { children: ReactNode }) {
                     <div className="flex items-center gap-3 ml-auto">
                       <Button
                         variant="default"
-                        className="ml-2 cursor-pointer bg-background hover:bg-(--brand) hover:text-background text-foreground border border-input"
+                        className="ml-2 cursor-pointer bg-background/20 hover:bg-(--brand) hover:text-background text-foreground border border-input"
                       >
                         <RefreshCcw className="w-5 h-5 cursor-pointer" />
                       </Button>
                       <Button
                         variant="default"
-                        className="cursor-pointer bg-background hover:bg-(--brand) hover:text-background text-foreground border border-input"
+                        className="cursor-pointer bg-background/20 hover:bg-(--brand) hover:text-background text-foreground border border-input"
                       >
                         <GitPullRequest className="w-5 h-5 cursor-pointer" />
                       </Button>
                       <Button
                         variant="default"
-                        className="cursor-pointer bg-background hover:bg-(--brand) hover:text-background text-foreground border border-input"
+                        className="cursor-pointer bg-background/20 hover:bg-(--brand) hover:text-background text-foreground border border-input"
                       >
                         <Bell className="w-5 h-5 cursor-pointer" />
                       </Button>

@@ -1,66 +1,75 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 
-export type Theme = 'light' | 'dark' | 'system';
+import { useThemeStore, type Theme } from "@/stores/themeStore";
 
 type ThemeContextValue = {
   theme: Theme;
-  resolvedTheme: 'light' | 'dark';
+  resolvedTheme: "light" | "dark";
   setTheme: (theme: Theme) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const STORAGE_KEY = 'gitradar-theme';
+function resolveTheme(theme: Theme): "light" | "dark" {
+  if (theme === "system") {
+    if (typeof window === "undefined") {
+      return "light";
+    }
 
-function getStoredTheme(): Theme {
-  if (typeof window === 'undefined') {
-    return 'system';
+    return window.matchMedia("(prefers-color-scheme: dark)")
+      .matches
+      ? "dark"
+      : "light";
   }
 
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+  return theme;
 }
 
-function resolveTheme(theme: Theme): 'light' | 'dark' {
-  if (typeof window === 'undefined') {
-    return 'light';
-  }
+export function ThemeProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const theme = useThemeStore((state) => state.theme);
+  const setTheme = useThemeStore((state) => state.setTheme);
 
-  return theme === 'system'
-    ? window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light'
-    : theme;
-}
-
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(getStoredTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() =>
-    resolveTheme(getStoredTheme())
-  );
+  const [resolvedTheme, setResolvedTheme] = useState<
+    "light" | "dark"
+  >(() => resolveTheme(theme));
 
   useEffect(() => {
     const root = document.documentElement;
 
     const applyTheme = () => {
-      const nextTheme = resolveTheme(theme);
+      const resolved = resolveTheme(theme);
 
-      root.classList.remove('light', 'dark');
-      root.classList.add(nextTheme);
-      setResolvedTheme(nextTheme);
+      root.classList.remove("light", "dark");
+      root.classList.add(resolved);
+
+      setResolvedTheme(resolved);
     };
 
     applyTheme();
-    localStorage.setItem(STORAGE_KEY, theme);
 
-    if (theme !== 'system') {
-      return undefined;
+    if (theme !== "system") {
+      return;
     }
 
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    media.addEventListener('change', applyTheme);
+    const media = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    );
 
-    return () => media.removeEventListener('change', applyTheme);
+    media.addEventListener("change", applyTheme);
+
+    return () => {
+      media.removeEventListener("change", applyTheme);
+    };
   }, [theme]);
 
   return (
@@ -68,7 +77,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       value={{
         theme,
         resolvedTheme,
-        setTheme: setThemeState,
+        setTheme,
       }}
     >
       {children}
@@ -80,7 +89,9 @@ export function useTheme() {
   const context = useContext(ThemeContext);
 
   if (!context) {
-    throw new Error('useTheme must be used inside ThemeProvider');
+    throw new Error(
+      "useTheme must be used inside ThemeProvider"
+    );
   }
 
   return context;
