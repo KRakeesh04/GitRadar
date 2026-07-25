@@ -1,22 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { open } from '@tauri-apps/plugin-dialog';
 import { toast } from 'sonner';
 import {
-  AlertTriangle,
   ChevronDown,
   ChevronRight,
   Folder,
-  FolderPlus,
   GitBranch,
   HardDrive,
   RefreshCw,
   Trash2,
-  X,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '#/components/ui/collapsible';
 import { Button } from '#/components/ui/button';
-import { Input } from '#/components/ui/input';
 import { Skeleton } from '#/components/ui/skeleton';
 import { Switch } from '#/components/ui/switch';
 import {
@@ -27,18 +22,23 @@ import {
 import {
   useAddTrackedRoot,
   useDeleteTrackedRoot,
-  useRepositories,
   useRescanTrackedRoots,
   useToggleTrackedRoot,
   useTrackedRoots,
 } from '#/hooks/useTrackedRoots';
-import type { Repository, TrackedRoot } from '#/lib/tauri/tracked-roots';
+import type { TrackedRoot } from '#/lib/tauri/tracked-roots';
+import type { Repository } from '#/lib/tauri/repositories';
+import { useRepositories } from '#/hooks/useRepositories';
+import { useSyncRepositories } from '#/hooks/useSync';
+import { AddRootPathPopover } from '#/components/root-paths/add-root-path';
+import { DeleteRootPathDialog } from '#/components/root-paths/delete-root-path';
+import { formatUpdatedAt, getErrorMessage, getPathLabel } from '#/components/root-paths/utils';
 
 export const Route = createFileRoute('/root-paths')({ component: RouteComponent });
 
 type RootRepository = Repository;
 
-type RootPath = TrackedRoot & {
+export type RootPath = TrackedRoot & {
   name: string;
   updatedLabel: string;
   repos: RootRepository[];
@@ -49,11 +49,13 @@ function RouteComponent() {
   const repositoriesQuery = useRepositories();
   const addMutation = useAddTrackedRoot();
   const rescanMutation = useRescanTrackedRoots();
+  const syncMutation = useSyncRepositories();
   const toggleMutation = useToggleTrackedRoot();
   const deleteMutation = useDeleteTrackedRoot();
   const [expandedPathId, setExpandedPathId] = useState<number | null>(null);
   const [isAddPopoverOpen, setIsAddPopoverOpen] = useState(false);
   const [rootToDelete, setRootToDelete] = useState<RootPath | null>(null);
+  const [syncingRootId, setSyncingRootId] = useState<number | null>(null);
 
   const rootPaths = useMemo(
     () =>
@@ -95,10 +97,14 @@ function RouteComponent() {
     });
   };
 
-  const rescanRootPaths = () => {
-    rescanMutation.mutate(undefined, {
-      onSuccess: () => toast.success('Root paths rescanned'),
+  const syncRootPath = (rootPath: RootPath) => {
+    if (syncMutation.isPending || rootPath.repos.length === 0) return;
+
+    setSyncingRootId(rootPath.id);
+    syncMutation.mutate(rootPath.repos.map(repo => repo.id), {
+      onSuccess: () => toast.success(`${rootPath.name} repositories synced`),
       onError: error => toast.error(getErrorMessage(error)),
+      onSettled: () => setSyncingRootId(null),
     });
   };
 
@@ -151,6 +157,7 @@ function RouteComponent() {
                 toggleMutation.isPending && toggleMutation.variables.path === rootPath.path
               }
               isRescanning={rescanMutation.isPending}
+              isSyncing={syncingRootId === rootPath.id}
               onToggle={() =>
                 setExpandedPathId(current => (current === rootPath.id ? null : rootPath.id))
               }
@@ -160,7 +167,7 @@ function RouteComponent() {
                   { onError: error => toast.error(getErrorMessage(error)) }
                 )
               }
-              onRescan={rescanRootPaths}
+              onRescan={() => syncRootPath(rootPath)}
               onDelete={() => setRootToDelete(rootPath)}
             />
           ))
@@ -183,6 +190,7 @@ function RouteComponent() {
   );
 }
 
+
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex w-full flex-col items-center gap-1 rounded-md border border-border p-4">
@@ -192,11 +200,13 @@ function Stat({ value, label }: { value: number; label: string }) {
   );
 }
 
+
 function RootPathCard({
   rootPath,
   isExpanded,
   isToggling,
   isRescanning,
+  isSyncing,
   onToggle,
   onEnabledChange,
   onRescan,
@@ -206,6 +216,7 @@ function RootPathCard({
   isExpanded: boolean;
   isToggling: boolean;
   isRescanning: boolean;
+  isSyncing: boolean;
   onToggle: () => void;
   onEnabledChange: (enabled: boolean) => void;
   onRescan: () => void;
@@ -239,9 +250,9 @@ function RootPathCard({
                   size="icon-sm"
                   aria-label={`Refresh ${rootPath.name}`}
                   onClick={onRescan}
-                  disabled={isRescanning}
+                  disabled={isRescanning || isSyncing || rootPath.repos.length === 0}
                 >
-                  <RefreshCw className={isRescanning ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+                  <RefreshCw className={isRescanning || isSyncing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
                 </Button>
                 <Button
                   variant="ghost"
@@ -313,6 +324,7 @@ function RootPathCard({
   );
 }
 
+
 function RepositoryRow({ repo }: { repo: RootRepository }) {
   return (
     <Link
@@ -340,170 +352,6 @@ function RepositoryRow({ repo }: { repo: RootRepository }) {
   );
 }
 
-function AddRootPathPopover({
-  open: isOpen,
-  onOpenChange,
-  onAdd,
-  isSaving,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAdd: (path: string) => Promise<void>;
-  isSaving: boolean;
-}) {
-  const [path, setPath] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isSelecting, setIsSelecting] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setPath('');
-      setError(null);
-      setIsSelecting(false);
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const selectFolder = async () => {
-    setError(null);
-    setIsSelecting(true);
-    try {
-      const selected = await open({ directory: true, multiple: false, title: 'Select root path' });
-      if (typeof selected === 'string') setPath(selected);
-    } catch (selectError) {
-      setError(getErrorMessage(selectError));
-    } finally {
-      setIsSelecting(false);
-    }
-  };
-
-  const submit = async () => {
-    const trimmedPath = path.trim();
-    if (!trimmedPath) {
-      setError('Select a folder before adding a root path.');
-      return;
-    }
-    setError(null);
-    try {
-      await onAdd(trimmedPath);
-    } catch (saveError) {
-      setError(getErrorMessage(saveError));
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 px-4 pt-24 backdrop-blur-xs">
-      <div className="w-full max-w-lg rounded-lg border border-border bg-popover p-5 text-popover-foreground shadow-xl">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-(--brand)/15 text-(--brand)">
-            <FolderPlus className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold">Add root path</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Choose a directory GitRadar should scan for repositories.
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Close"
-            onClick={() => onOpenChange(false)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="mt-5 grid gap-4">
-          <label className="grid gap-1.5 text-sm font-medium">
-            Root folder
-            <div className="flex gap-2">
-              <Input
-                className="h-9 font-mono"
-                value={path}
-                onChange={event => setPath(event.target.value)}
-                placeholder="/home/user/projects"
-              />
-              <Button
-                variant="outline"
-                className="h-9"
-                onClick={selectFolder}
-                disabled={isSelecting}
-              >
-                <Folder className="h-4 w-4" />
-                {isSelecting ? 'Opening' : 'Browse'}
-              </Button>
-            </div>
-          </label>
-          {error ? (
-            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600">
-              {error}
-            </div>
-          ) : null}
-        </div>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            className="bg-(--brand) text-white hover:bg-(--brand-hover)"
-            onClick={submit}
-            disabled={isSaving}
-          >
-            {isSaving ? 'Adding' : 'Add root path'}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DeleteRootPathDialog({
-  rootPath,
-  isDeleting,
-  onCancel,
-  onDelete,
-}: {
-  rootPath: RootPath | null;
-  isDeleting: boolean;
-  onCancel: () => void;
-  onDelete: () => void;
-}) {
-  if (!rootPath) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        className="w-full max-w-md rounded-xl border border-red-500/40 bg-card p-6 shadow-xl"
-      >
-        <div className="flex gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-500/10 text-red-600">
-            <AlertTriangle className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-semibold">Delete "{rootPath.name}"?</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              This removes the root path from GitRadar. Repositories inside it won't be deleted from
-              disk.
-            </p>
-            <p className="mt-2 text-sm text-amber-600">
-              {rootPath.repos.length} tracked repos will no longer be monitored.
-            </p>
-          </div>
-        </div>
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={onDelete} disabled={isDeleting}>
-            {isDeleting ? 'Deleting' : 'Delete path'}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function LoadingCards() {
   return (
@@ -529,7 +377,7 @@ function ErrorState({ error, onRetry }: { error: unknown; onRetry: () => void })
   return (
     <div className="rounded-xl border border-red-500/30 bg-card px-6 py-16 text-center">
       <p className="text-sm text-red-600">Could not load tracked folders.</p>
-      <p className="mx-auto mt-2 max-w-2xl break-words text-xs text-muted-foreground">
+      <p className="mx-auto mt-2 max-w-2xl wrap-break-word text-xs text-muted-foreground">
         {getErrorMessage(error)}
       </p>
       <Button className="mt-4" variant="outline" onClick={onRetry}>
@@ -537,14 +385,4 @@ function ErrorState({ error, onRetry }: { error: unknown; onRetry: () => void })
       </Button>
     </div>
   );
-}
-function getPathLabel(path: string) {
-  return path.split(/[\\/]/).filter(Boolean).at(-1) || path;
-}
-function formatUpdatedAt(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-}
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
 }
