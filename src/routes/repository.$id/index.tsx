@@ -46,9 +46,6 @@ This project is licensed under the MIT License.
 function RouteComponent() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-md border border-border bg-card p-3 text-sm">
-        Overview route loaded successfully.
-      </div>
       <div className="flex items-center gap-2">
         <Card className="p-4">
           <span className="font-semibold">Recent Activity</span>

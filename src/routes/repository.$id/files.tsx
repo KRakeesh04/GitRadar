@@ -9,11 +9,6 @@ export const Route = createFileRoute("/repository/$id/files")({
   component: RouteComponent,
 });
 
-type FileData = {
-  mime_type: string;
-  data: Uint8Array | string;
-};
-
 export type FileTreeNode = {
   name: string;
   path: string;
