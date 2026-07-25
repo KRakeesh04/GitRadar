@@ -1,3 +1,4 @@
+use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::{
@@ -8,6 +9,16 @@ use crate::{
     state::AppState,
 };
 
+#[derive(Debug, Clone, Serialize)]
+struct SyncProgress {
+    repo_id: i64,
+    job_id: i64,
+    progress: i32,
+    processed_items: i32,
+    total_items: i32,
+    status: String,
+}
+
 #[tauri::command]
 pub fn sync_repository(
     app: AppHandle,
@@ -15,9 +26,34 @@ pub fn sync_repository(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let mut conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
-    sync_service::sync_repository(&mut conn, repo_id).map_err(|e| e.to_string())?;
+    let mut emit_progress = |job_id, progress, processed_items, total_items, status: &str| {
+        let _ = app.emit(
+            "sync:progress",
+            SyncProgress {
+                repo_id,
+                job_id,
+                progress,
+                processed_items,
+                total_items,
+                status: status.to_owned(),
+            },
+        );
+    };
+    let job_id = sync_service::sync_repository(&mut conn, repo_id, &mut emit_progress)
+        .map_err(|e| e.to_string())?;
     app.emit("repository-sync-finished", repo_id)
         .map_err(|e| e.to_string())?;
+    let _ = app.emit(
+        "sync:finished",
+        SyncProgress {
+            repo_id,
+            job_id,
+            progress: 100,
+            processed_items: 9,
+            total_items: 9,
+            status: "completed".to_owned(),
+        },
+    );
     Ok(())
 }
 
@@ -146,6 +182,17 @@ pub fn get_indexing_jobs_by_repo(
 ) -> Result<Vec<IndexingJob>, String> {
     let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
     indexing_jobs::get_indexing_jobs_by_repo(&conn, repo_id, limit).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_latest_indexing_job_by_repo(
+    repo_id: i64,
+    state: State<'_, AppState>,
+) -> Result<Option<IndexingJob>, String> {
+    let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
+    indexing_jobs::get_indexing_jobs_by_repo(&conn, repo_id, Some(1))
+        .map(|mut jobs| jobs.pop())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

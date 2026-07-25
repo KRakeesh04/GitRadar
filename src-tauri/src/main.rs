@@ -80,6 +80,7 @@ fn main() {
             commands::sync::sync_repository_health,
             commands::sync::sync_file_hotspots,
             commands::sync::get_indexing_jobs_by_repo,
+            commands::sync::get_latest_indexing_job_by_repo,
             commands::sync::get_pending_indexing_jobs,
             commands::sync::cleanup_completed_indexing_jobs,
         ])

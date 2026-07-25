@@ -68,7 +68,11 @@ pub fn calculate_repository_metrics(
     })
 }
 
-pub fn sync_repository(conn: &mut Connection, repo_id: i64) -> DomainResult<()> {
+pub fn sync_repository(
+    conn: &mut Connection,
+    repo_id: i64,
+    on_progress: &mut dyn FnMut(i64, i32, i32, i32, &str),
+) -> DomainResult<i64> {
     let job_id = indexing_jobs::create_indexing_job(conn, repo_id, "sync").map_err(|e| {
         DomainError::InvalidRepository(format!("Failed to create indexing job: {e}"))
     })?;
@@ -76,6 +80,7 @@ pub fn sync_repository(conn: &mut Connection, repo_id: i64) -> DomainResult<()> 
     indexing_jobs::mark_indexing_job_started(conn, job_id).map_err(|e| {
         DomainError::InvalidRepository(format!("Failed to start indexing job: {e}"))
     })?;
+    on_progress(job_id, 0, 0, 9, "running");
 
     repositories::update_repository_sync_state(
         conn,
@@ -105,36 +110,92 @@ pub fn sync_repository(conn: &mut Connection, repo_id: i64) -> DomainResult<()> 
         sync_branches_with_context(&tx, repo_id, &context)?;
         completed_steps += 1;
         update_indexing_progress(&tx, job_id, completed_steps, total_steps)?;
+        on_progress(
+            job_id,
+            11,
+            completed_steps as i32,
+            total_steps as i32,
+            "running",
+        );
 
         let snapshot = collect_history_snapshot(&context.repo)?;
 
         sync_commits_with_snapshot(&tx, repo_id, &snapshot)?;
         completed_steps += 1;
         update_indexing_progress(&tx, job_id, completed_steps, total_steps)?;
+        on_progress(
+            job_id,
+            22,
+            completed_steps as i32,
+            total_steps as i32,
+            "running",
+        );
 
         sync_contributors_with_snapshot(&tx, repo_id, &snapshot)?;
         completed_steps += 1;
         update_indexing_progress(&tx, job_id, completed_steps, total_steps)?;
+        on_progress(
+            job_id,
+            33,
+            completed_steps as i32,
+            total_steps as i32,
+            "running",
+        );
 
         sync_repository_files_with_context(&tx, repo_id, &context)?;
         completed_steps += 1;
         update_indexing_progress(&tx, job_id, completed_steps, total_steps)?;
+        on_progress(
+            job_id,
+            44,
+            completed_steps as i32,
+            total_steps as i32,
+            "running",
+        );
 
         sync_commit_file_stats_with_snapshot(&tx, repo_id, &snapshot)?;
         completed_steps += 1;
         update_indexing_progress(&tx, job_id, completed_steps, total_steps)?;
+        on_progress(
+            job_id,
+            56,
+            completed_steps as i32,
+            total_steps as i32,
+            "running",
+        );
 
         sync_file_hotspots_with_snapshot(&tx, repo_id, &snapshot)?;
         completed_steps += 1;
         update_indexing_progress(&tx, job_id, completed_steps, total_steps)?;
+        on_progress(
+            job_id,
+            67,
+            completed_steps as i32,
+            total_steps as i32,
+            "running",
+        );
 
         sync_repo_activity_with_snapshot(&tx, repo_id, &snapshot)?;
         completed_steps += 1;
         update_indexing_progress(&tx, job_id, completed_steps, total_steps)?;
+        on_progress(
+            job_id,
+            78,
+            completed_steps as i32,
+            total_steps as i32,
+            "running",
+        );
 
         sync_working_tree_status_with_context(&tx, repo_id, &context)?;
         completed_steps += 1;
         update_indexing_progress(&tx, job_id, completed_steps, total_steps)?;
+        on_progress(
+            job_id,
+            89,
+            completed_steps as i32,
+            total_steps as i32,
+            "running",
+        );
 
         upsert_repository_health_snapshot(&tx, repo_id)?;
         completed_steps += 1;
@@ -161,6 +222,14 @@ pub fn sync_repository(conn: &mut Connection, repo_id: i64) -> DomainResult<()> 
 
         let _ = indexing_jobs::cleanup_completed_indexing_jobs(conn, 30);
 
+        on_progress(
+            job_id,
+            100,
+            total_steps as i32,
+            total_steps as i32,
+            "completed",
+        );
+
         Ok(())
     })();
 
@@ -169,14 +238,14 @@ pub fn sync_repository(conn: &mut Connection, repo_id: i64) -> DomainResult<()> 
             conn,
             repo_id,
             Some(&Utc::now().to_rfc3339()),
-            Some(&Utc::now().to_rfc3339()),
+            None,
             Some("failed"),
         );
         let _ = indexing_jobs::fail_indexing_job(conn, job_id, &format!("{error}"));
         return Err(error);
     }
 
-    Ok(())
+    Ok(job_id)
 }
 
 pub fn sync_branches(conn: &mut Connection, repo_id: i64) -> DomainResult<()> {

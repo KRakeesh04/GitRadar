@@ -80,7 +80,7 @@ pub fn update_repository_sync_state(
         UPDATE repositories
         SET
             last_scanned_at = ?1,
-            last_indexed_at = ?2,
+            last_indexed_at = COALESCE(?2, last_indexed_at),
             index_status = ?3,
             updated_at = ?4
         WHERE id = ?5
