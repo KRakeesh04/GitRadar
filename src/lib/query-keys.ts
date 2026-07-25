@@ -1,4 +1,28 @@
 export const queryKeys = {
   trackedRoots: ['tracked-roots'] as const,
   repositories: ['repositories'] as const,
+  repository: (repoId: number) => ['repository', repoId] as const,
+  repositoryFiles: (repoId: number) => ['repository', repoId, 'files'] as const,
+  repositoryFilesByPath: (repoId: number, filePath: string) => ['repository', repoId, 'files', filePath] as const,
+  repositoryFilesByExtension: (repoId: number, extension: string) => ['repository', repoId, 'files', extension] as const,
+  repositoryFileStats: (repoId: number) => ['repository', repoId, 'file-stats'] as const,
+  repositoryFileStatsByPath: (repoId: number, filePath: string) => ['repository', repoId, 'file-stats', filePath] as const,
+  repositoryFileHotspots: (repoId: number) => ['repository', repoId, 'file-hotspots'] as const,
+  repositoryFileDiff: (repoId: number, filePath: string, commitHash: string) =>
+    ['repository', repoId, 'file', filePath, 'diff', commitHash] as const,
+  repositoryFileDiffHistory: (repoId: number, filePath: string, limit: number, offset: number) =>
+    ['repository', repoId, 'file', filePath, 'diff-history', limit, offset] as const,
+  repositoryLanguagesStats: (repoId: number) => ['repository', repoId, 'languages-stats'] as const,
+  repositoryActivity: (repoId: number) => ['repository', repoId, 'activity'] as const,
+  contributors: (repoId: number) => ['repository', repoId, 'contributors'] as const,
+  topContributors: (repoId: number) => ['repository', repoId, 'top-contributors'] as const,
+  commits: (repoId: number, limit: number, offset: number) => ['repository', repoId, 'commits', limit, offset] as const,
+  commitsGraph: (repoId: number, limit: number, offset: number) => ['repository', repoId, 'commits-graph', limit, offset] as const,
+  commit: (repoId: number, commitHash: string) => ['repository', repoId, 'commit', commitHash] as const,
+  commitDiff: (repoId: number, commitHash: string) => ['repository', repoId, 'commit', commitHash, 'diff'] as const,
+  commitDiffInline: (repoId: number, commitHash: string) => ['repository', repoId, 'commit', commitHash, 'diff-inline'] as const,
+  branches: (repoId: number) => ['repository', repoId, 'branches'] as const,
+  branch: (repoId: number, branchName: string) => ['repository', repoId, 'branch', branchName] as const,
+  indexingJobs: (repoId: number) => ['repository', repoId, 'indexing-jobs'] as const,
+  latestIndexingJob: (repoId: number) => ['repository', repoId, 'indexing-job', 'latest'] as const,
 };
