@@ -96,16 +96,18 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ------------------------------------------------------------
 
         CREATE TABLE IF NOT EXISTS branches (
-            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-            repo_id             INTEGER NOT NULL,
-            name                TEXT NOT NULL,
-            is_head             INTEGER NOT NULL DEFAULT 0,
-            is_default          INTEGER NOT NULL DEFAULT 0,
-            last_commit_hash    TEXT,
-            last_commit_at      TEXT,
-            ahead_count         INTEGER NOT NULL DEFAULT 0,
-            behind_count        INTEGER NOT NULL DEFAULT 0,
-            updated_at          TEXT NOT NULL,
+            id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+            repo_id                     INTEGER NOT NULL,
+            name                        TEXT NOT NULL,
+            is_head                     INTEGER NOT NULL DEFAULT 0,
+            is_default                  INTEGER NOT NULL DEFAULT 0,
+            last_commit_hash            TEXT,
+            last_commit_at              TEXT,
+            ahead_count_from_default    INTEGER NOT NULL DEFAULT 0,
+            behind_count_from_default   INTEGER NOT NULL DEFAULT 0,
+            ahead_count_from_remote     INTEGER NOT NULL DEFAULT 0,
+            behind_count_from_remote    INTEGER NOT NULL DEFAULT 0,
+            updated_at                  TEXT NOT NULL,
 
             FOREIGN KEY (repo_id)
                 REFERENCES repositories(id)
