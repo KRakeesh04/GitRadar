@@ -146,7 +146,7 @@ function RouteComponent() {
             <Button
               key={option.value}
               variant='outline'
-              className={`cursor-pointer border border-input ${filter === option.value ? 'bg-(--brand) text-background hover:bg-(--brand) hover:text-background' : 'text-muted-foreground bg-muted-background'}`}
+              className={`cursor-pointer border border-input ${filter === option.value ? 'text-foreground' : 'text-muted-foreground bg-background'}`}
               onClick={() => setFilter(option.value)}
             >
               <span>{option.label}</span>

@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addTrackedRoot,
   deleteTrackedRoot,
-  getRepositories,
   getTrackedRoots,
   rescanTrackedRoots,
   setTrackedRootEnabled,
@@ -14,13 +13,6 @@ export function useTrackedRoots() {
   return useQuery({
     queryKey: queryKeys.trackedRoots,
     queryFn: getTrackedRoots,
-  });
-}
-
-export function useRepositories() {
-  return useQuery({
-    queryKey: queryKeys.repositories,
-    queryFn: getRepositories,
   });
 }
 
