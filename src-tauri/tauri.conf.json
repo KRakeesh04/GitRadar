@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.gitradar.dev",
   "build": {
-    "frontendDist": "../dist",
+    "frontendDist": "../dist/client",
     "devUrl": "http://localhost:1420",
     "beforeDevCommand": "bun run dev",
     "beforeBuildCommand": "bun run build",

@@ -9,7 +9,12 @@ import tailwindcss from '@tailwindcss/vite';
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [devtools(), tailwindcss(), tanstackStart({
-    spa: { enabled: true }
+    spa: {
+      enabled: true,
+      prerender: {
+        outputPath: '/index.html',
+      },
+    }
   }), viteReact()],
   server: {
     port: 1420,
