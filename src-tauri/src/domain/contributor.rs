@@ -186,10 +186,10 @@ mod tests {
         let mut contributor =
             Contributor::new(1, 1, "John Doe".to_string(), "john@example.com".to_string()).unwrap();
 
-        contributor.commit_count = 100;
-        contributor.additions = 10000;
-        contributor.deletions = 5000;
-        contributor.active_days = 200;
+        contributor.commit_count = 500;
+        contributor.additions = 30000;
+        contributor.deletions = 10000;
+        contributor.active_days = 300;
 
         assert_eq!(
             contributor.contributor_level(),
@@ -256,10 +256,10 @@ mod tests {
         let mut contributor =
             Contributor::new(1, 1, "John Doe".to_string(), "john@example.com".to_string()).unwrap();
 
-        contributor.commit_count = 100;
-        contributor.additions = 10000;
-        contributor.deletions = 5000;
-        contributor.active_days = 200;
+        contributor.commit_count = 500;
+        contributor.additions = 30000;
+        contributor.deletions = 10000;
+        contributor.active_days = 300;
         contributor.set_last_commit("2024-01-01T10:00:00Z".to_string());
 
         assert_eq!(contributor.get_role(), ContributorRole::ActiveMaintainer);

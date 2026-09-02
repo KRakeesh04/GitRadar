@@ -483,3 +483,138 @@ pub fn get_repository_path(conn: &Connection, repo_id: i64) -> Result<Option<Str
     let path: Option<String> = stmt.query_row([repo_id], |row| row.get(0))?;
     Ok(path)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::infrastructure::database::migrations::run_migrations;
+    use crate::infrastructure::database::repositories::tracked_roots;
+
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        run_migrations(&conn).unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_multi_root_repository_relationship() {
+        let conn = setup_test_db();
+
+        // 1. Add two tracked roots (parent & child)
+        let root1_id = tracked_roots::insert_tracked_root(&conn, "/home/user/projects", true).unwrap();
+        let root2_id = tracked_roots::insert_tracked_root(&conn, "/home/user/projects/backend", true).unwrap();
+
+        // 2. Discover / upsert repository under both roots
+        let repo_id = upsert_repository(
+            &conn,
+            "api-service",
+            "/home/user/projects/backend/api-service",
+            "/home/user/projects/backend/api-service/.git",
+            "standard",
+            Some("https://github.com/org/api.git"),
+            Some("main"),
+            Some("main"),
+        ).unwrap();
+
+        // Link to root 1
+        link_repository_to_root(&conn, root1_id, repo_id).unwrap();
+        // Link to root 2
+        link_repository_to_root(&conn, root2_id, repo_id).unwrap();
+
+        // 3. Verify root_ids contains both
+        let root_ids = get_root_ids_for_repository(&conn, repo_id).unwrap();
+        assert_eq!(root_ids, vec![root1_id, root2_id]);
+
+        // 4. Query by root1 and root2
+        let root1_repos = get_repositories_by_root_id(&conn, root1_id).unwrap();
+        let root2_repos = get_repositories_by_root_id(&conn, root2_id).unwrap();
+        assert_eq!(root1_repos.len(), 1);
+        assert_eq!(root2_repos.len(), 1);
+        assert_eq!(root1_repos[0].id, repo_id);
+        assert_eq!(root2_repos[0].id, repo_id);
+
+        // 5. Delete root 1: should remove link to root 1 but keep repository and root 2 link
+        let deleted = tracked_roots::delete_tracked_root(&conn, root1_id).unwrap();
+        assert!(deleted);
+
+        let remaining_roots = get_root_ids_for_repository(&conn, repo_id).unwrap();
+        assert_eq!(remaining_roots, vec![root2_id]);
+
+        let repo = get_repository_by_id(&conn, repo_id).unwrap();
+        assert!(repo.is_some());
+    }
+
+    #[test]
+    fn test_repository_enable_disable_and_sync_check() {
+        let conn = setup_test_db();
+        let root_id = tracked_roots::insert_tracked_root(&conn, "/home/user/projects", true).unwrap();
+
+        let repo_id = upsert_repository(
+            &conn,
+            "frontend",
+            "/home/user/projects/frontend",
+            "/home/user/projects/frontend/.git",
+            "standard",
+            None,
+            Some("main"),
+            Some("main"),
+        ).unwrap();
+        link_repository_to_root(&conn, root_id, repo_id).unwrap();
+
+        // By default enabled
+        assert!(is_repository_enabled_for_sync(&conn, repo_id).unwrap());
+
+        // Disable repository
+        set_repository_enabled(&conn, repo_id, false).unwrap();
+        assert!(!is_repository_enabled_for_sync(&conn, repo_id).unwrap());
+
+        // Re-enable repository
+        set_repository_enabled(&conn, repo_id, true).unwrap();
+        assert!(is_repository_enabled_for_sync(&conn, repo_id).unwrap());
+
+        // If tracked root is disabled, repo is not eligible for sync
+        tracked_roots::update_tracked_root_enabled(&conn, "/home/user/projects", false).unwrap();
+        assert!(!is_repository_enabled_for_sync(&conn, repo_id).unwrap());
+    }
+
+    #[test]
+    fn test_paginated_repositories() {
+        let conn = setup_test_db();
+        let root_id = tracked_roots::insert_tracked_root(&conn, "/home/user/projects", true).unwrap();
+
+        for i in 1..=5 {
+            let path = format!("/home/user/projects/repo{}", i);
+            let name = format!("repo{}", i);
+            let repo_id = upsert_repository(
+                &conn,
+                &name,
+                &path,
+                &format!("{}/.git", path),
+                "standard",
+                None,
+                Some("main"),
+                Some("main"),
+            ).unwrap();
+            link_repository_to_root(&conn, root_id, repo_id).unwrap();
+        }
+
+        let page1 = get_paginated_repositories(&conn, None, None, 2, None).unwrap();
+        assert_eq!(page1.items.len(), 2);
+        assert!(page1.has_more);
+        assert_eq!(page1.total_count, 5);
+
+        let page2 = get_paginated_repositories(&conn, None, None, 2, page1.next_cursor).unwrap();
+        assert_eq!(page2.items.len(), 2);
+        assert!(page2.has_more);
+
+        let page3 = get_paginated_repositories(&conn, None, None, 2, page2.next_cursor).unwrap();
+        assert_eq!(page3.items.len(), 1);
+        assert!(!page3.has_more);
+
+        // Search test
+        let search_result = get_paginated_repositories(&conn, Some("repo3"), None, 10, None).unwrap();
+        assert_eq!(search_result.items.len(), 1);
+        assert_eq!(search_result.items[0].name, "repo3");
+    }
+}
+

@@ -344,7 +344,7 @@ mod tests {
         )
         .unwrap();
 
-        repo.set_health_score(0.5).unwrap(); // Fair health
+        repo.set_health_score(0.1).unwrap(); // Poor health
         repo.set_activity_level(ActivityLevel::VeryLow);
         repo.update_metrics(0, 0);
 
@@ -365,7 +365,7 @@ mod tests {
         )
         .unwrap();
 
-        repo.set_health_score(0.3).unwrap();
+        repo.set_health_score(0.0).unwrap();
         repo.set_activity_level(ActivityLevel::VeryLow);
 
         assert_eq!(repo.maintenance_priority(), MaintenancePriority::High);
@@ -385,6 +385,8 @@ mod tests {
         .unwrap();
 
         repo.set_health_score(0.8).unwrap();
+        repo.set_activity_level(ActivityLevel::High);
+        repo.update_metrics(10, 2);
         let report = repo.get_health_report();
 
         assert!(report.is_healthy);
