@@ -7,6 +7,7 @@ import { useCommits } from "#/hooks/useCommits";
 import type { Contributor, LanguageStatsResponse } from "#/lib/tauri/analytics";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { formatUpdatedAt } from "./root-paths/utils";
 
 const languageColors: Record<string, string> = {
   TypeScript: "bg-blue-500", JavaScript: "bg-yellow-400", Rust: "bg-orange-500", Go: "bg-cyan-500",
@@ -165,7 +166,7 @@ export function RepositoryMetadataBar({ repoId }: { repoId: string }) {
           <span className="flex items-center"><GitCommit className="mr-2 h-4 w-4" />{repoInfo?.totalCommits ?? 0}</span>
           <span className="flex items-center"><FileText className="mr-2 h-4 w-4" />{filesCount}</span>
           <span className="flex items-center"><Users className="mr-2 h-4 w-4" />{contributors.length}</span>
-          <span className="flex items-center text-sm"><Clock className="mr-2 h-4 w-4" />{lastCommitDate}</span>
+          <span className="flex items-center text-sm"><Clock className="mr-2 h-4 w-4" />{formatUpdatedAt(lastCommitDate.toString())}</span>
         </div>
       </div>
 
