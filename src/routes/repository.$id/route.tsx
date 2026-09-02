@@ -13,7 +13,7 @@ function RepositoryLayout() {
   const { id } = Route.useParams()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
-  const activeTab = pathname.includes('/commits')
+  const activeTab = pathname.includes('/commits') || pathname.includes('/diff')
     ? RepositoryTab.Commits
     : pathname.includes('/files')
       ? RepositoryTab.Files

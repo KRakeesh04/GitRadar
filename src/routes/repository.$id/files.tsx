@@ -1,9 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 
 import FileExplorer from "#/components/file-explorer/file-explorer";
 import PreviewPane from "#/components/file-explorer/preview-pane";
-
-import { createFileRoute } from "@tanstack/react-router";
+import {
+  useRepoBranches,
+  useRepoFileContent,
+  useRepoFileTree,
+} from "#/hooks/useFiles";
 
 export const Route = createFileRoute("/repository/$id/files")({
   component: RouteComponent,
@@ -17,245 +21,101 @@ export type FileTreeNode = {
   children: FileTreeNode[];
 };
 
-const treeSampleData: FileTreeNode[] = [
-  {
-    name: "src",
-    path: "src",
-    is_directory: true,
-    size_or_file_count: 3,
-    children: [
-      {
-        name: "index.tsx",
-        path: "src/index.tsx",
-        is_directory: false,
-        size_or_file_count: 1024,
-        children: [],
-      },
-      {
-        name: "App.tsx",
-        path: "src/App.tsx",
-        is_directory: false,
-        size_or_file_count: 2048,
-        children: [],
-      },
-      {
-        name: "components",
-        path: "src/components",
-        is_directory: true,
-        size_or_file_count: 2,
-        children: [
-          {
-            name: "Button.tsx",
-            path: "src/components/Button.tsx",
-            is_directory: false,
-            size_or_file_count: 512,
-            children: [],
-          },
-          {
-            name: "Input.tsx",
-            path: "src/components/Input.tsx",
-            is_directory: false,
-            size_or_file_count: 1024,
-            children: [],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    name: "README.md",
-    path: "README.md",
-    is_directory: false,
-    size_or_file_count: 512,
-    children: [],
-  },
-  {
-    name: "package.json",
-    path: "package.json",
-    is_directory: false,
-    size_or_file_count: 256,
-    children: [],
-  },
-  {
-    name: "public",
-    path: "public",
-    is_directory: true,
-    size_or_file_count: 1,
-    children: [],
-  },
-];
-
-const sampleFiles: Record<string, string> = {
-  "README.md": `# Sample README
-
-This is a sample README file for the repository.
-
-## Features
-
-- Feature 1
-- Feature 2
-- Feature 3
-
-## Installation
-
-1. Clone repository
-2. Install dependencies
-3. Run project
-
-| Name | Commits |
-|------|---------|
-| John | 24 |
-| Jane | 17 |
-
-## Features
-
-- Feature 1
-- Feature 2
-- Feature 3
-
-## Installation
-
-1. Clone repository
-2. Install dependencies
-3. Run project
-
-| Name | Commits |
-|------|---------|
-| John | 24 |
-| Jane | 17 |
-
-## Features
-
-- Feature 1
-- Feature 2
-- Feature 3
-
-## Installation
-
-1. Clone repository
-2. Install dependencies
-3. Run project
-
-| Name | Commits |
-|------|---------|
-| John | 24 |
-| Jane | 17 |
-
-## Features
-
-- Feature 1
-- Feature 2
-- Feature 3
-
-## Installation
-
-1. Clone repository
-2. Install dependencies
-3. Run project
-
-| Name | Commits |
-|------|---------|
-| John | 24 |
-| Jane | 17 |
-
-## Features
-
-- Feature 1
-- Feature 2
-- Feature 3
-
-## Installation
-
-1. Clone repository
-2. Install dependencies
-3. Run project
-
-| Name | Commits |
-|------|---------|
-| John | 24 |
-| Jane | 17 |
-`,
-
-  "package.json": `{
-  "name": "gitradar",
-  "version": "0.1.0",
-  "private": true
-}
-`,
-
-  "src/index.tsx": `import React from "react";
-import ReactDOM from "react-dom/client";
-
-import App from "./App";
-
-ReactDOM.createRoot(document.getElementById("root")!).render(
-    <App />
-);
-`,
-
-  "src/App.tsx": `export default function App() {
-    return <h1>Hello GitRadar</h1>;
-}
-`,
-
-  "src/components/Button.tsx": `export function Button() {
-    return <button>Click Me</button>;
-}
-`,
-
-  "src/components/Input.tsx": `export function Input() {
-    return <input />;
-}
-`,
-};
-
-const branchesSampleData = ["main", "dev", "feature-1", "feature-2"];
-
 function findReadme(nodes: FileTreeNode[]): string | undefined {
   for (const node of nodes) {
-    if (
-      !node.is_directory &&
-      node.name.toLowerCase() === "readme.md"
-    ) {
+    if (!node.is_directory && node.path.toLowerCase() === "readme.md") {
       return node.path;
     }
 
     if (node.is_directory) {
-      const result = findReadme(node.children);
-
-      if (result) return result;
+      const readme = findReadme(node.children);
+      if (readme) return readme;
     }
   }
 
   return undefined;
 }
 
+function findFirstFile(nodes: FileTreeNode[]): string | undefined {
+  for (const node of nodes) {
+    if (!node.is_directory) return node.path;
+
+    const childFile = findFirstFile(node.children);
+    if (childFile) return childFile;
+  }
+
+  return undefined;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function RouteComponent() {
-  const defaultFile = useMemo(
-    () => findReadme(treeSampleData) ?? "package.json",
-    []
+  const { id } = Route.useParams();
+  const repoId = Number(id);
+  const treeQuery = useRepoFileTree(repoId);
+  const branchesQuery = useRepoBranches(repoId);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const contentQuery = useRepoFileContent(repoId, selectedPath);
+
+  const tree = treeQuery.data ?? [];
+  const branches = useMemo(
+    () => (branchesQuery.data ?? []).map(branch => branch.name),
+    [branchesQuery.data],
   );
 
-  const [selectedPath, setSelectedPath] =
-    useState(defaultFile);
+  useEffect(() => {
+    if (selectedPath || tree.length === 0) return;
+    setSelectedPath(findReadme(tree) ?? findFirstFile(tree) ?? null);
+  }, [selectedPath, tree]);
 
-  const content =
-    sampleFiles[selectedPath] ??
-    "// No sample content available.";
+  if (treeQuery.isPending || branchesQuery.isPending) {
+    return <FilePageMessage message="Loading repository files…" />;
+  }
+
+  if (treeQuery.isError || branchesQuery.isError) {
+    return (
+      <FilePageMessage
+        message={getErrorMessage(treeQuery.error ?? branchesQuery.error)}
+      />
+    );
+  }
+
+  if (tree.length === 0) {
+    return <FilePageMessage message="No indexed files found. Run a repository sync first." />;
+  }
+
+  const content = contentQuery.data?.content ?? "";
 
   return (
     <div className="flex h-[calc(100vh-180px)] overflow-hidden rounded-lg border bg-card">
       <FileExplorer
-        tree={treeSampleData}
-        branches={branchesSampleData}
-        selected={selectedPath}
+        tree={tree}
+        branches={branches}
+        selected={selectedPath ?? ""}
         onSelect={setSelectedPath}
       />
 
-      <PreviewPane
-        path={selectedPath}
-        content={content}
-      />
+      {selectedPath ? (
+        contentQuery.isPending ? (
+          <FilePageMessage message="Loading file content…" />
+        ) : contentQuery.isError ? (
+          <FilePageMessage message={getErrorMessage(contentQuery.error)} />
+        ) : (
+          <PreviewPane path={selectedPath} content={content} />
+        )
+      ) : (
+        <FilePageMessage message="Select a file to preview it." />
+      )}
+    </div>
+  );
+}
+
+function FilePageMessage({ message }: { message: string }) {
+  return (
+    <div className="flex h-[calc(100vh-180px)] w-full items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
+      {message}
     </div>
   );
 }

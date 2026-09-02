@@ -22,7 +22,7 @@ export default function FileExplorer({
   // Root folders first, then files, alphabetically
   const sortedTree = useMemo(() => sortNodes(tree), [tree]);
 
-  const [activeBranch, setActiveBranch] = useState<string>(branches[0] || "");
+  const [activeBranch, setActiveBranch] = useState<string>(branches.includes("main") ? "main" : branches[0] || "");
 
   return (
     <aside className="flex h-full w-50 lg:55 xl:w-72 flex-col border-r bg-card">

@@ -3,6 +3,9 @@ import { Button } from '#/components/ui/button';
 import { Card, CardContent, CardHeader } from '#/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '#/components/ui/dropdown-menu';
 import { Separator } from '#/components/ui/separator';
+import { useCommits } from '#/hooks/useCommits';
+import { useRepoFiles } from '#/hooks/useFiles';
+import { useRepositories, useRepositoryLanguagesStats } from '#/hooks/useRepositories';
 import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { ArrowUpNarrowWide, ChevronsUpDown, Clock, FileText, Filter, GitBranch, GitCommit, Users } from 'lucide-react';
 import { useState } from 'react';
@@ -34,96 +37,96 @@ const DropdownFilterOptions = [
   { label: RepositoryDropdownFilter.MostCommits, value: RepositoryDropdownFilter.MostCommits },
 ];
 
-const repoList = [
-  {
-    name: 'Repo 1',
-    description: 'This is the description for Repo 1.',
-    path: 'there/is/something/in/this/path/to/repo1',
-    status: 'Clean',
-    branch: 'main',
-    lastCommit: '2023-08-01',
-    totalCommits: 10,
-    fileCount: 100,
-    contributors: 2
-  },
-  {
-    name: 'Repo 2',
-    description: 'This is the description for Rep/path/to/repo1o 2.',
-    path: '/path/to/repo2',
-    status: 'Dirty',
-    branch: 'develop',
-    lastCommit: '2023-08-02',
-    totalCommits: 15,
-    fileCount: 150,
-    contributors: 3
-  },
-  {
-    name: 'Repo 3',
-    description: 'This is the description for Repo 3.',
-    path: '/path/to/repo1',
-    status: 'Clean',
-    branch: 'main',
-    lastCommit: '2023-08-01',
-    totalCommits: 10,
-    fileCount: 100,
-    contributors: 2
-  },
-  {
-    name: 'Repo 4',
-    description: 'This is the description for Repo 4.',
-    path: '/path/to/repo1',
-    status: 'Dirty',
-    branch: 'develop',
-    lastCommit: '2023-08-02',
-    totalCommits: 15,
-    fileCount: 150,
-    contributors: 3
-  },
-  {
-    name: 'Repo 5',
-    description: 'This is the description for Repo 5.',
-    path: '/path/to/repo1',
-    status: 'Clean',
-    branch: 'main',
-    lastCommit: '2023-08-01',
-    totalCommits: 10,
-    fileCount: 100,
-    contributors: 2
-  },
-  {
-    name: 'Repo 6',
-    description: 'This is the description for Repo 6.',
-    path: '/path/to/repo1',
-    status: 'Clean',
-    branch: 'develop',
-    lastCommit: '2023-08-02',
-    totalCommits: 15,
-    fileCount: 150,
-    contributors: 3
-  },
-  {
-    name: 'Repo 7',
-    description: 'This is the description for Repo 7.',
-    path: '/path/to/repo1',
-    status: 'Clean',
-    branch: 'main',
-    lastCommit: '2023-08-01',
-    totalCommits: 10,
-    fileCount: 100,
-    contributors: 2
-  },
-  {
-    name: 'Repo 8',
-    description: 'This is the description for Repo 8.',
-    path: '/path/to/repo1',
-    status: 'Clean',
-    branch: 'develop',
-    lastCommit: '2023-08-02',
-    totalCommits: 15,
-    fileCount: 150,
-    contributors: 3
-  }
-]
+// const repoList = [
+//   {
+//     name: 'Repo 1',
+//     description: 'This is the description for Repo 1.',
+//     path: 'there/is/something/in/this/path/to/repo1',
+//     status: 'Clean',
+//     branch: 'main',
+//     lastCommit: '2023-08-01',
+//     totalCommits: 10,
+//     fileCount: 100,
+//     contributors: 2
+//   },
+//   {
+//     name: 'Repo 2',
+//     description: 'This is the description for Rep/path/to/repo1o 2.',
+//     path: '/path/to/repo2',
+//     status: 'Dirty',
+//     branch: 'develop',
+//     lastCommit: '2023-08-02',
+//     totalCommits: 15,
+//     fileCount: 150,
+//     contributors: 3
+//   },
+//   {
+//     name: 'Repo 3',
+//     description: 'This is the description for Repo 3.',
+//     path: '/path/to/repo1',
+//     status: 'Clean',
+//     branch: 'main',
+//     lastCommit: '2023-08-01',
+//     totalCommits: 10,
+//     fileCount: 100,
+//     contributors: 2
+//   },
+//   {
+//     name: 'Repo 4',
+//     description: 'This is the description for Repo 4.',
+//     path: '/path/to/repo1',
+//     status: 'Dirty',
+//     branch: 'develop',
+//     lastCommit: '2023-08-02',
+//     totalCommits: 15,
+//     fileCount: 150,
+//     contributors: 3
+//   },
+//   {
+//     name: 'Repo 5',
+//     description: 'This is the description for Repo 5.',
+//     path: '/path/to/repo1',
+//     status: 'Clean',
+//     branch: 'main',
+//     lastCommit: '2023-08-01',
+//     totalCommits: 10,
+//     fileCount: 100,
+//     contributors: 2
+//   },
+//   {
+//     name: 'Repo 6',
+//     description: 'This is the description for Repo 6.',
+//     path: '/path/to/repo1',
+//     status: 'Clean',
+//     branch: 'develop',
+//     lastCommit: '2023-08-02',
+//     totalCommits: 15,
+//     fileCount: 150,
+//     contributors: 3
+//   },
+//   {
+//     name: 'Repo 7',
+//     description: 'This is the description for Repo 7.',
+//     path: '/path/to/repo1',
+//     status: 'Clean',
+//     branch: 'main',
+//     lastCommit: '2023-08-01',
+//     totalCommits: 10,
+//     fileCount: 100,
+//     contributors: 2
+//   },
+//   {
+//     name: 'Repo 8',
+//     description: 'This is the description for Repo 8.',
+//     path: '/path/to/repo1',
+//     status: 'Clean',
+//     branch: 'develop',
+//     lastCommit: '2023-08-02',
+//     totalCommits: 15,
+//     fileCount: 150,
+//     contributors: 3
+//   }
+// ]
 
 function RouteComponent() {
   const [filter, setFilter] = useState<RepositorySearchFilter>(RepositorySearchFilter.All);
@@ -134,10 +137,27 @@ function RouteComponent() {
     return <Outlet />
   }
 
+  const repoList = useRepositories().data ?? [];
+  const handleLastCommitDate = (repoId: number) => {
+    return useCommits(repoId, 1, 0).data?.[0]?.committedAt ?? 'N/A';
+  };
+  const handleFileCount = (repoId: number) => {
+    const files = useRepoFiles(repoId).data?.length ?? 0;
+    return files;
+  }
+  const handleTopLangUsage = (repoId: number) => {
+    const repoLanguagesStats = useRepositoryLanguagesStats(repoId).data;
+    const languagesDetails = repoLanguagesStats?.languages.map(lang => ({
+      name: lang.language,
+      percentage: ((lang.bytes / repoLanguagesStats.total_bytes) * 100).toFixed(2),
+    })).sort((a, b) => Number(b.percentage) - Number(a.percentage)) ?? [];
+    return languagesDetails?.[0]?.name ?? 'N/A';
+  }
+
   return (
     <div className="flex flex-col gap-2 scroll-auto px-[clamp(0.5rem,2vw,2.5rem)] py-5 overflow-y-auto">
       <span className="text-2xl font-medium">Repositories</span>
-      <span className='text-muted-foreground'>5 repositories tracked · 2 with uncommitted changes</span>
+      <span className='text-muted-foreground'>{repoList.length} repositories tracked · {repoList.filter((repo) => repo.isDirty).length} with uncommitted changes</span>
       <div className="flex mt-4 lg:mt-5">
         <div className="flex items-center gap-3 ">
           <SearchBar placeholder="Filter repositories..." className='w-[clamp(10rem,20vw,15rem)]' />
@@ -183,34 +203,34 @@ function RouteComponent() {
       </div>
       <div className="flex flex-wrap justify-center gap-6 my-4 lg:my-5 py-5 place-items-center w-full overflow-y-auto">
         {/* Repository list content */}
-        {repoList.map((repo, index) => (
+        {repoList.map((repo) => (
           <Link
-            key={index}
+            key={repo.id}
             to='/repository/$id'
-            params={{ id: String(index) }}
+            params={{ id: String(repo.id) }}
             className="block"
           >
             <Card className="p-4 mb-2 w-90 lg:w-100 xl:w-120 w-clump(20rem, 30vw, 25rem) transition-transform duration-300 hover:border hover:border-(--brand) hover:shadow-lg cursor-pointer">
               <CardHeader className="flex flex-col gap-1">
                 <div className="flex items-center gap-2 w-full">
                   <span className="text-lg font-semibold">{repo.name}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${repo.status === 'Clean' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {repo.status}
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${!repo.isDirty ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {!repo.isDirty ? 'Clean' : 'Dirty'}
                   </span>
-                  <span className='ml-auto border border-input px-2 py-1 rounded-md bg-muted'>TypeScript</span>
+                  <span className='ml-auto border border-input px-2 py-1 rounded-md bg-muted'>{handleTopLangUsage(repo.id)}</span>
                 </div>
-                <span className="text-sm text-muted-foreground">{repo.description}</span>
+                {/* <span className="text-sm text-muted-foreground">{repo.description}</span> */}
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-5 mt-2 text-sm text-foreground">
-                  <span className='flex items-center'><GitBranch className="w-4 h-4 mr-2" />{repo.branch}</span>
-                  <span className='flex items-center'><Clock className="w-4 h-4 mr-2" />{repo.lastCommit}</span>
+                  <span className='flex items-center'><GitBranch className="w-4 h-4 mr-2" />{repo.headBranch}</span>
+                  <span className='flex items-center'><Clock className="w-4 h-4 mr-2" />{handleLastCommitDate(repo.id)}</span>
                 </div>
                 <Separator orientation="horizontal" className="my-2" />
                 <div className="flex flex-wrap gap-5 mt-2 text-sm text-muted-foreground">
                   <span className='flex items-center'><GitCommit className="w-4 h-4 mr-2" />{repo.totalCommits}</span>
-                  <span className='flex items-center'><FileText className="w-4 h-4 mr-2" />{repo.fileCount}</span>
-                  <span className='flex items-center'><Users className="w-4 h-4 mr-2" />{repo.contributors}</span>
+                  <span className='flex items-center'><FileText className="w-4 h-4 mr-2" />{handleFileCount(repo.id)}</span>
+                  <span className='flex items-center'><Users className="w-4 h-4 mr-2" />{repo.uniqueContributors}</span>
                   <span className='ml-auto'>{repo.path.length > 20 ? `...${repo.path.substring(repo.path.length - 20)}` : repo.path}</span>
                 </div>
               </CardContent>
