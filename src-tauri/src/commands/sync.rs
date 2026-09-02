@@ -20,41 +20,50 @@ struct SyncProgress {
 }
 
 #[tauri::command]
-pub fn sync_repository(
+pub async fn sync_repository(
     app: AppHandle,
     repo_id: i64,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let mut conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
-    let mut emit_progress = |job_id, progress, processed_items, total_items, status: &str| {
+    // A complete repository index walks Git history, calculates a diff for every
+    // commit, scans files, and writes SQLite records.  It must not run on Tauri's
+    // event-loop thread or Linux will report the application as unresponsive.
+    let db_path = state.db_path.clone();
+
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let mut conn = get_connection(&db_path).map_err(|e| e.to_string())?;
+        let mut emit_progress = |job_id, progress, processed_items, total_items, status: &str| {
+            let _ = app.emit(
+                "sync:progress",
+                SyncProgress {
+                    repo_id,
+                    job_id,
+                    progress,
+                    processed_items,
+                    total_items,
+                    status: status.to_owned(),
+                },
+            );
+        };
+        let job_id = sync_service::sync_repository(&mut conn, repo_id, &mut emit_progress)
+            .map_err(|e| e.to_string())?;
+        app.emit("repository-sync-finished", repo_id)
+            .map_err(|e| e.to_string())?;
         let _ = app.emit(
-            "sync:progress",
+            "sync:finished",
             SyncProgress {
                 repo_id,
                 job_id,
-                progress,
-                processed_items,
-                total_items,
-                status: status.to_owned(),
+                progress: 100,
+                processed_items: 9,
+                total_items: 9,
+                status: "completed".to_owned(),
             },
         );
-    };
-    let job_id = sync_service::sync_repository(&mut conn, repo_id, &mut emit_progress)
-        .map_err(|e| e.to_string())?;
-    app.emit("repository-sync-finished", repo_id)
-        .map_err(|e| e.to_string())?;
-    let _ = app.emit(
-        "sync:finished",
-        SyncProgress {
-            repo_id,
-            job_id,
-            progress: 100,
-            processed_items: 9,
-            total_items: 9,
-            status: "completed".to_owned(),
-        },
-    );
-    Ok(())
+        Ok(())
+    })
+    .await
+    .map_err(|error| format!("Repository sync worker failed: {error}"))?
 }
 
 #[tauri::command]
