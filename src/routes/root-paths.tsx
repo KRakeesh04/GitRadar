@@ -26,6 +26,7 @@ import {
   useToggleTrackedRoot,
   useTrackedRoots,
 } from '#/hooks/useTrackedRoots';
+import { useToggleRepositoryEnabled } from '#/hooks/useRepositories';
 import type { TrackedRoot } from '#/lib/tauri/tracked-roots';
 import type { Repository } from '#/lib/tauri/repositories';
 import { useRepositories } from '#/hooks/useRepositories';
@@ -56,14 +57,16 @@ function RouteComponent() {
   const [isAddPopoverOpen, setIsAddPopoverOpen] = useState(false);
   const [rootToDelete, setRootToDelete] = useState<RootPath | null>(null);
   const [syncingRootId, setSyncingRootId] = useState<number | null>(null);
-
+  
   const rootPaths = useMemo(
     () =>
       (rootsQuery.data ?? []).map(root => ({
         ...root,
         name: getPathLabel(root.path),
         updatedLabel: formatUpdatedAt(root.updatedAt),
-        repos: (repositoriesQuery.data ?? []).filter(repo => repo.rootId === root.id),
+        repos: (repositoriesQuery.data ?? []).filter(
+          repo => repo.rootIds?.includes(root.id) || repo.rootId === root.id
+        ),
       })),
     [repositoriesQuery.data, rootsQuery.data]
   );
@@ -78,14 +81,14 @@ function RouteComponent() {
   const allRepos = rootPaths.flatMap(root => root.repos);
   const cleanCount = allRepos.filter(repo => !repo.isDirty).length;
   const modifiedCount = allRepos.filter(repo => repo.isDirty).length;
-
+  
   const addRootPath = async (path: string) => {
     await addMutation.mutateAsync(path);
     await rescanMutation.mutateAsync();
     setIsAddPopoverOpen(false);
     toast.success('Root path added');
   };
-
+  
   const deleteRootPath = () => {
     if (!rootToDelete) return;
     deleteMutation.mutate(rootToDelete.id, {
@@ -96,18 +99,29 @@ function RouteComponent() {
       onError: error => toast.error(getErrorMessage(error)),
     });
   };
-
+  
   const syncRootPath = (rootPath: RootPath) => {
-    if (syncMutation.isPending || rootPath.repos.length === 0) return;
-
+    if (!rootPath.enabled) {
+      toast.error('Root path is disabled. Enable it to sync repositories.');
+      return;
+    }
+    
+    const syncableRepos = rootPath.repos.filter(repo => repo.isEnabled);
+    if (syncMutation.isPending || syncableRepos.length === 0) {
+      if (rootPath.repos.length > 0 && syncableRepos.length === 0) {
+        toast.info('All repositories in this root path are disabled from syncing');
+      }
+      return;
+    }
+    
     setSyncingRootId(rootPath.id);
-    syncMutation.mutate(rootPath.repos.map(repo => repo.id), {
+    syncMutation.mutate(syncableRepos.map(repo => repo.id), {
       onSuccess: () => toast.success(`${rootPath.name} repositories synced`),
       onError: error => toast.error(getErrorMessage(error)),
       onSettled: () => setSyncingRootId(null),
     });
   };
-
+  
   return (
     <div className="flex h-full w-full flex-col gap-4 overflow-y-auto bg-muted/20 py-4">
       <div className="flex flex-row items-center gap-3 px-10 lg:px-20">
@@ -124,7 +138,7 @@ function RouteComponent() {
           <Button
             className="cursor-pointer bg-(--brand) py-4 text-white hover:bg-(--brand-hover)"
             onClick={() => requestAddRootPathPopover()}
-          >
+            >
             + Add Path
           </Button>
         </div>
@@ -150,11 +164,11 @@ function RouteComponent() {
         ) : (
           rootPaths.map(rootPath => (
             <RootPathCard
-              key={rootPath.id}
-              rootPath={rootPath}
-              isExpanded={expandedPathId === rootPath.id}
-              isToggling={
-                toggleMutation.isPending && toggleMutation.variables.path === rootPath.path
+            key={rootPath.id}
+            rootPath={rootPath}
+            isExpanded={expandedPathId === rootPath.id}
+            isToggling={
+              toggleMutation.isPending && toggleMutation.variables.path === rootPath.path
               }
               isRescanning={rescanMutation.isPending}
               isSyncing={syncingRootId === rootPath.id}
@@ -169,8 +183,8 @@ function RouteComponent() {
               }
               onRescan={() => syncRootPath(rootPath)}
               onDelete={() => setRootToDelete(rootPath)}
-            />
-          ))
+              />
+            ))
         )}
       </div>
 
@@ -179,13 +193,13 @@ function RouteComponent() {
         onOpenChange={setIsAddPopoverOpen}
         onAdd={addRootPath}
         isSaving={addMutation.isPending}
-      />
+        />
       <DeleteRootPathDialog
         rootPath={rootToDelete}
         isDeleting={deleteMutation.isPending}
         onCancel={() => setRootToDelete(null)}
         onDelete={deleteRootPath}
-      />
+        />
     </div>
   );
 }
@@ -224,6 +238,7 @@ function RootPathCard({
 }) {
   const cleanCount = rootPath.repos.filter(repo => !repo.isDirty).length;
   const modifiedCount = rootPath.repos.filter(repo => repo.isDirty).length;
+  const toggleRepoMutation = useToggleRepositoryEnabled();
 
   return (
     <Collapsible open={isExpanded}>
@@ -250,7 +265,7 @@ function RootPathCard({
                   size="icon-sm"
                   aria-label={`Refresh ${rootPath.name}`}
                   onClick={onRescan}
-                  disabled={isRescanning || isSyncing || rootPath.repos.length === 0}
+                  disabled={isRescanning || isSyncing || rootPath.repos.length === 0 || !rootPath.enabled}
                 >
                   <RefreshCw className={isRescanning || isSyncing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
                 </Button>
@@ -303,7 +318,17 @@ function RootPathCard({
               <CollapsibleContent>
                 <div className="border-t px-3 py-2">
                   {rootPath.repos.map(repo => (
-                    <RepositoryRow key={repo.id} repo={repo} />
+                    <RepositoryRow 
+                      key={repo.id} 
+                      repo={repo} 
+                      onToggleEnabled={(enabled) => toggleRepoMutation.mutate(
+                        { repoId: repo.id, enabled },
+                        { 
+                          onSuccess: () => toast.success(`${repo.name} is now ${enabled ? 'enabled' : 'disabled'}`),
+                          onError: error => toast.error(getErrorMessage(error)) 
+                        }
+                      )}
+                    />
                   ))}
                 </div>
               </CollapsibleContent>
@@ -325,21 +350,35 @@ function RootPathCard({
 }
 
 
-function RepositoryRow({ repo }: { repo: RootRepository }) {
+function RepositoryRow({ repo, onToggleEnabled }: { repo: RootRepository; onToggleEnabled: (enabled: boolean) => void }) {
+  const isRepoDisabled = !repo.isEnabled;
+
   return (
-    <Link
-      to="/repository/$id"
-      params={{ id: String(repo.id) }}
-      className="flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted"
-    >
+    <div className="flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted">
       <span
         className={
-          !repo.isDirty
-            ? 'h-2 w-2 shrink-0 rounded-full bg-emerald-500'
-            : 'h-2 w-2 shrink-0 rounded-full bg-amber-500'
+          isRepoDisabled
+            ? 'h-2 w-2 shrink-0 rounded-full bg-zinc-400'
+            : !repo.isDirty
+              ? 'h-2 w-2 shrink-0 rounded-full bg-emerald-500'
+              : 'h-2 w-2 shrink-0 rounded-full bg-amber-500'
         }
+        title={isRepoDisabled ? 'Sync disabled' : !repo.isDirty ? 'Clean' : 'Modified'}
       />
-      <span className="min-w-0 flex-1 truncate font-medium">{repo.name}</span>
+      <Link
+        to="/repository/$id"
+        params={{ id: String(repo.id) }}
+        className={`min-w-0 flex-1 truncate font-medium`}
+      >
+        <span className={`${isRepoDisabled ? 'text-muted-foreground line-through' : ''}`}>
+          {repo.name}
+        </span>
+      {isRepoDisabled ? (
+        <span className="ml-3 rounded-sm bg-zinc-200 px-1.5 py-0.5 text-[10px] font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+          Disabled
+        </span>
+      ) : null}
+      </Link>
       <span className="hidden items-center gap-1 text-muted-foreground sm:flex">
         <GitBranch className="h-3.5 w-3.5" />
         {repo.headBranch ?? 'Detached'}
@@ -347,8 +386,20 @@ function RepositoryRow({ repo }: { repo: RootRepository }) {
       <span className="hidden w-24 text-right text-xs text-muted-foreground sm:block">
         {formatUpdatedAt(repo.updatedAt)}
       </span>
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-    </Link>
+      <Switch
+        checked={repo.isEnabled}
+        onChange={e => onToggleEnabled(e.currentTarget.checked)}
+        aria-label={`Toggle sync for ${repo.name}`}
+        title={repo.isEnabled ? 'Sync enabled' : 'Sync disabled'}
+      />
+      <Link
+        to="/repository/$id"
+        params={{ id: String(repo.id) }}
+        className="shrink-0"
+      >
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </Link>
+    </div>
   );
 }
 
