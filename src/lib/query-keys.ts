@@ -1,6 +1,9 @@
 export const queryKeys = {
   trackedRoots: ['tracked-roots'] as const,
   repositories: ['repositories'] as const,
+  repositoriesByRoot: (rootId: number) => ['repositories', 'by-root', rootId] as const,
+  paginatedRepositories: (params: { search?: string; filter?: string; limit?: number; cursor?: number | null }) =>
+    ['repositories', 'paginated', params] as const,
   repository: (repoId: number) => ['repository', repoId] as const,
   repositoryFiles: (repoId: number) => ['repository', repoId, 'files'] as const,
   repositoryFileTree: (repoId: number) => ['repository', repoId, 'file-tree'] as const,

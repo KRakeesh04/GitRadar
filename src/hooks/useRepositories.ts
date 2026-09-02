@@ -1,12 +1,51 @@
 import { queryKeys } from "#/lib/query-keys";
 import { getContributorsByRepoId, getRepoLanguagesStats, getRepositoryActivityDaily, getTopContributorsByRepoId } from "#/lib/tauri/analytics";
-import { getBranchByRepoIdAndName, getBranchesByRepoId, getRepositories, getRepositoryInfoById } from "#/lib/tauri/repositories";
-import { useQuery } from "@tanstack/react-query";
+import {
+  getBranchByRepoIdAndName,
+  getBranchesByRepoId,
+  getPaginatedRepositories,
+  getRepositories,
+  getRepositoriesByRootId,
+  getRepositoryInfoById,
+  setRepositoryEnabled,
+} from "#/lib/tauri/repositories";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function useRepositories() {
   return useQuery({
     queryKey: queryKeys.repositories,
     queryFn: getRepositories,
+  });
+}
+
+export function useRepositoriesByRootId(rootId: number) {
+  return useQuery({
+    queryKey: queryKeys.repositoriesByRoot(rootId),
+    queryFn: () => getRepositoriesByRootId(rootId),
+  });
+}
+
+export function usePaginatedRepositories(params: {
+  search?: string;
+  filter?: string;
+  limit?: number;
+  cursor?: number | null;
+}) {
+  return useQuery({
+    queryKey: queryKeys.paginatedRepositories(params),
+    queryFn: () => getPaginatedRepositories(params),
+  });
+}
+
+export function useToggleRepositoryEnabled() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ repoId, enabled }: { repoId: number; enabled: boolean }) =>
+      setRepositoryEnabled(repoId, enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.repositories });
+      queryClient.invalidateQueries({ queryKey: ['repositories'] });
+    },
   });
 }
 

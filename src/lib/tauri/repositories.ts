@@ -1,28 +1,11 @@
 import { tauri } from "./tauri";
 
-// export interface Repository {
-//   id: number;
-//   rootId: number;
-//   name: string;
-//   path: string;
-//   headBranch: string | null;
-//   isDirty: boolean;
-//   updatedAt: string;
-// }
-
-// interface RepositoryResponse {
-//   id: number;
-//   root_id: number;
-//   name: string;
-//   path: string;
-//   head_branch: string | null;
-//   is_dirty: boolean;
-//   updated_at: string;
-// }
-
 export interface RepositoryInfo {
   id: number;
-  rootId: number;
+  rootIds: number[];
+  rootId: number | null;
+  isEnabled: boolean;
+  createdAt: string;
   updatedAt: string;
   name: string;
   path: string;
@@ -41,7 +24,10 @@ export type Repository = RepositoryInfo;
 
 interface RepositoryInfoResponse {
   id: number;
-  root_id: number;
+  root_ids?: number[];
+  root_id?: number | null;
+  is_enabled: boolean;
+  created_at: string;
   updated_at: string;
   name: string;
   path: string;
@@ -56,22 +42,27 @@ interface RepositoryInfoResponse {
   unique_contributors: number;
 }
 
-// function toRepository(repository: RepositoryResponse): Repository {
-//   return {
-//     id: repository.id,
-//     rootId: repository.root_id,
-//     name: repository.name,
-//     path: repository.path,
-//     headBranch: repository.head_branch,
-//     isDirty: repository.is_dirty,
-//     updatedAt: repository.updated_at,
-//   };
-// }
+export interface PaginatedRepositoriesResponse {
+  items: RepositoryInfoResponse[];
+  next_cursor: number | null;
+  has_more: boolean;
+  total_count: number;
+}
+
+export interface PaginatedRepositories {
+  items: RepositoryInfo[];
+  nextCursor: number | null;
+  hasMore: boolean;
+  totalCount: number;
+}
 
 function toRepositoryInfo(repository: RepositoryInfoResponse): RepositoryInfo {
   return {
     id: repository.id,
-    rootId: repository.root_id,
+    rootIds: repository.root_ids ?? (repository.root_id != null ? [repository.root_id] : []),
+    rootId: repository.root_id ?? (repository.root_ids?.[0] ?? null),
+    isEnabled: repository.is_enabled,
+    createdAt: repository.created_at,
     updatedAt: repository.updated_at,
     name: repository.name,
     path: repository.path,
@@ -88,39 +79,39 @@ function toRepositoryInfo(repository: RepositoryInfoResponse): RepositoryInfo {
 }
 
 export interface Branch {
-  id: number,
-  repoId: number,
-  name: string,
-  branchType: string,
-  isHead: boolean,
-  isDefault: boolean,
-  lastCommitHash: string | null,
-  aheadCountFromRemote: number,
-  behindCountFromRemote: number,
-  aheadCountFromDefault: number,
-  behindCountFromDefault: number,
-  status: string,
-  shouldMerge: boolean,
-  isStale: boolean,
-  importance: string,
+  id: number;
+  repoId: number;
+  name: string;
+  branchType: string;
+  isHead: boolean;
+  isDefault: boolean;
+  lastCommitHash: string | null;
+  aheadCountFromRemote: number;
+  behindCountFromRemote: number;
+  aheadCountFromDefault: number;
+  behindCountFromDefault: number;
+  status: string;
+  shouldMerge: boolean;
+  isStale: boolean;
+  importance: string;
 }
 
 interface BranchResponse {
-  id: number,
-  repo_id: number,
-  name: string,
-  branch_type: string,
-  is_head: boolean,
-  is_default: boolean,
-  last_commit_hash: string | null,
-  ahead_count_from_remote: number,
-  behind_count_from_remote: number,
-  ahead_count_from_default: number,
-  behind_count_from_default: number,
-  status: string,
-  should_merge: boolean,
-  is_stale: boolean,
-  importance: string,
+  id: number;
+  repo_id: number;
+  name: string;
+  branch_type: string;
+  is_head: boolean;
+  is_default: boolean;
+  last_commit_hash: string | null;
+  ahead_count_from_remote: number;
+  behind_count_from_remote: number;
+  ahead_count_from_default: number;
+  behind_count_from_default: number;
+  status: string;
+  should_merge: boolean;
+  is_stale: boolean;
+  importance: string;
 }
 
 function toBranch(branch: BranchResponse): Branch {
@@ -146,6 +137,36 @@ function toBranch(branch: BranchResponse): Branch {
 export async function getRepositories(): Promise<RepositoryInfo[]> {
   const repositories = await tauri<RepositoryInfoResponse[]>('get_all_repositories');
   return repositories.map(toRepositoryInfo);
+}
+
+export async function getRepositoriesByRootId(rootId: number): Promise<RepositoryInfo[]> {
+  const repositories = await tauri<RepositoryInfoResponse[]>('get_repositories_by_root_id', { rootId });
+  return repositories.map(toRepositoryInfo);
+}
+
+export async function getPaginatedRepositories(params: {
+  search?: string;
+  filter?: string;
+  limit?: number;
+  cursor?: number | null;
+}): Promise<PaginatedRepositories> {
+  const response = await tauri<PaginatedRepositoriesResponse>('get_paginated_repositories', {
+    search: params.search || null,
+    filter: params.filter || null,
+    limit: params.limit || 20,
+    cursor: params.cursor || null,
+  });
+
+  return {
+    items: response.items.map(toRepositoryInfo),
+    nextCursor: response.next_cursor,
+    hasMore: response.has_more,
+    totalCount: response.total_count,
+  };
+}
+
+export function setRepositoryEnabled(repoId: number, enabled: boolean): Promise<boolean> {
+  return tauri<boolean>('set_repository_enabled', { repoId, enabled });
 }
 
 export async function getRepositoryInfoById(id: number): Promise<RepositoryInfo | null> {
