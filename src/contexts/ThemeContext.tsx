@@ -2,11 +2,13 @@ import {
   createContext,
   useContext,
   useEffect,
-  useState,
-  type ReactNode,
+  useState
+  
 } from "react";
+import type {ReactNode} from "react";
 
-import { useThemeStore, type Theme } from "@/stores/themeStore";
+import { useThemeStore  } from "@/stores/themeStore";
+import type {Theme} from "@/stores/themeStore";
 
 type ThemeContextValue = {
   theme: Theme;

@@ -8,7 +8,7 @@ interface SyncToastProps {
   current: number;
   total: number;
   minimized: boolean;
-  onToggle(): void;
+  onToggle: () => void;
 }
 
 export function SyncToast(props: SyncToastProps) {

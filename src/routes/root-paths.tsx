@@ -26,10 +26,9 @@ import {
   useToggleTrackedRoot,
   useTrackedRoots,
 } from '#/hooks/useTrackedRoots';
-import { useToggleRepositoryEnabled } from '#/hooks/useRepositories';
+import { useToggleRepositoryEnabled, useRepositories  } from '#/hooks/useRepositories';
 import type { TrackedRoot } from '#/lib/tauri/tracked-roots';
 import type { Repository } from '#/lib/tauri/repositories';
-import { useRepositories } from '#/hooks/useRepositories';
 import { useSyncRepositories } from '#/hooks/useSync';
 import { AddRootPathPopover } from '#/components/root-paths/add-root-path';
 import { DeleteRootPathDialog } from '#/components/root-paths/delete-root-path';

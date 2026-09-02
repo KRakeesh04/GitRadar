@@ -5,10 +5,11 @@ import {
   getIndexingJobs,
   getLatestIndexingJob,
   syncRepositories,
-  startRepositorySync,
-  type IndexingJob,
-  type SyncProgressEvent,
+  startRepositorySync
+  
+  
 } from "#/lib/tauri/sync";
+import type {IndexingJob, SyncProgressEvent} from "#/lib/tauri/sync";
 import { useEffect } from "react";
 
 export function useLatestIndexingJob(repoId: number) {
