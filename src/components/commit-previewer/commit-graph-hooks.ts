@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CommitGraphNode } from './types';
 
 export const COMMIT_ROW_HEIGHT = 76;
-export const GRAPH_WIDTH = 112;
-export const GRAPH_LANE_WIDTH = 18;
+export const GRAPH_MIN_WIDTH = 72;
+export const GRAPH_LANE_WIDTH = 15;
 export const GRAPH_TOP_PADDING = COMMIT_ROW_HEIGHT / 2;
 
 const GRAPH_COLORS = [
@@ -38,13 +38,6 @@ export type CommitGraphLayout = {
   paths: CommitGraphLayoutPath[];
   width: number;
   height: number;
-};
-
-type LayoutCache = {
-  processedCount: number;
-  activeLanes: Array<string | null>;
-  nodes: CommitGraphLayoutNode[];
-  paths: CommitGraphLayoutPath[];
 };
 
 export function useCommitGraphInfinite(repoId: string, limit = 50) {
@@ -157,58 +150,82 @@ export function useLastRowObserver({
 }
 
 export function useCommitGraphLayout(commits: CommitGraphNode[]): CommitGraphLayout {
-  const cacheRef = useRef<LayoutCache>({
-    processedCount: 0,
-    activeLanes: [],
-    nodes: [],
-    paths: [],
-  });
-
   return useMemo(() => {
-    const cache = cacheRef.current;
-
-    if (commits.length < cache.processedCount) {
-      cache.processedCount = 0;
-      cache.activeLanes = [];
-      cache.nodes = [];
-      cache.paths = [];
-    }
-
-    for (let index = cache.processedCount; index < commits.length; index += 1) {
-      appendCommitLayout(cache, commits[index], index);
-    }
-
-    cache.processedCount = commits.length;
-
-    const laneCount = Math.max(
-      1,
-      ...cache.nodes.map(node => node.lane + 1),
-      cache.activeLanes.length
-    );
+    const layout = buildCommitGraphLayout(commits);
 
     return {
-      nodes: cache.nodes,
-      paths: cache.paths,
-      width: Math.max(GRAPH_WIDTH, laneCount * GRAPH_LANE_WIDTH + 36),
-      height: Math.max(COMMIT_ROW_HEIGHT, commits.length * COMMIT_ROW_HEIGHT),
+      ...layout,
+      width: Math.max(GRAPH_MIN_WIDTH, layout.width),
+      height: Math.max(COMMIT_ROW_HEIGHT, layout.height),
     };
   }, [commits]);
 }
 
-function appendCommitLayout(cache: LayoutCache, commit: CommitGraphNode, index: number) {
-  const activeLanes = cache.activeLanes;
+function buildCommitGraphLayout(commits: CommitGraphNode[]): CommitGraphLayout {
+  const activeLanes: Array<string | null> = [];
+  const nodes: CommitGraphLayoutNode[] = [];
+  const paths: CommitGraphLayoutPath[] = [];
+  let maxLaneUsed = 0;
+  const knownHashes = new Set(commits.map(commit => commit.hash));
+
+  for (let index = 0; index < commits.length; index += 1) {
+    appendCommitLayout(
+      {
+        activeLanes,
+        nodes,
+        paths,
+        setMaxLane: lane => {
+          maxLaneUsed = Math.max(maxLaneUsed, lane);
+        },
+      },
+      commits[index],
+      index,
+      commits.length,
+      knownHashes,
+    );
+  }
+
+  const laneCount = Math.max(
+    1,
+    ...nodes.map(node => node.lane + 1),
+    activeLanes.length,
+    maxLaneUsed + 1,
+  );
+
+  return {
+    nodes,
+    paths,
+    width: laneCount * GRAPH_LANE_WIDTH + 36,
+    height: Math.max(COMMIT_ROW_HEIGHT, commits.length * COMMIT_ROW_HEIGHT),
+  };
+}
+
+function appendCommitLayout(
+  layout: {
+    activeLanes: Array<string | null>;
+    nodes: CommitGraphLayoutNode[];
+    paths: CommitGraphLayoutPath[];
+    setMaxLane: (lane: number) => void;
+  },
+  commit: CommitGraphNode,
+  index: number,
+  commitCount: number,
+  knownHashes: Set<string>,
+) {
+  const activeLanes = layout.activeLanes;
   let lane = activeLanes.indexOf(commit.hash);
 
   if (lane === -1) {
     lane = firstOpenLane(activeLanes);
     activeLanes[lane] = commit.hash;
   }
+  layout.setMaxLane(lane);
 
   const x = laneToX(lane);
   const y = indexToY(index);
   const color = laneColor(lane);
 
-  cache.nodes.push({
+  layout.nodes.push({
     hash: commit.hash,
     lane,
     x,
@@ -218,13 +235,28 @@ function appendCommitLayout(cache: LayoutCache, commit: CommitGraphNode, index: 
 
   const firstParent = commit.parent_hashes[0];
   const remainingParents = commit.parent_hashes.slice(1);
-  const nextY = indexToY(index + 1);
+  const nextY = index + 1 < commitCount
+    ? indexToY(index + 1)
+    : (index + 1) * COMMIT_ROW_HEIGHT;
 
-  if (firstParent) {
+  const graphBottom = commitCount * COMMIT_ROW_HEIGHT;
+
+  if (firstParent && knownHashes.has(firstParent)) {
+    const existingParentLane = activeLanes.indexOf(firstParent);
+    if (existingParentLane !== -1 && existingParentLane !== lane) {
+      activeLanes[existingParentLane] = null;
+    }
     activeLanes[lane] = firstParent;
-    cache.paths.push({
+    layout.paths.push({
       id: `${commit.hash}-${firstParent}-main`,
       d: `M ${x} ${y} L ${x} ${nextY}`,
+      color,
+    });
+  } else if (firstParent) {
+    activeLanes[lane] = null;
+    layout.paths.push({
+      id: `${commit.hash}-${firstParent}-continuation`,
+      d: `M ${x} ${y} L ${x} ${graphBottom}`,
       color,
     });
   } else {
@@ -232,16 +264,31 @@ function appendCommitLayout(cache: LayoutCache, commit: CommitGraphNode, index: 
   }
 
   for (const parentHash of remainingParents) {
+    if (!knownHashes.has(parentHash)) {
+      const continuationLane = firstOpenLane(activeLanes);
+      layout.setMaxLane(continuationLane);
+      const continuationX = laneToX(continuationLane);
+      const controlY = y + COMMIT_ROW_HEIGHT * 0.45;
+
+      layout.paths.push({
+        id: `${commit.hash}-${parentHash}-continuation`,
+        d: `M ${x} ${y} C ${x} ${controlY}, ${continuationX} ${controlY}, ${continuationX} ${graphBottom}`,
+        color: laneColor(continuationLane),
+      });
+      continue;
+    }
+
     let parentLane = activeLanes.indexOf(parentHash);
     if (parentLane === -1) {
       parentLane = firstOpenLane(activeLanes);
       activeLanes[parentLane] = parentHash;
     }
+    layout.setMaxLane(parentLane);
 
     const parentX = laneToX(parentLane);
     const controlY = y + COMMIT_ROW_HEIGHT * 0.45;
 
-    cache.paths.push({
+    layout.paths.push({
       id: `${commit.hash}-${parentHash}-merge`,
       d: `M ${x} ${y} C ${x} ${controlY}, ${parentX} ${controlY}, ${parentX} ${nextY}`,
       color: laneColor(parentLane),

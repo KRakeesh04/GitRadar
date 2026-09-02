@@ -3,7 +3,7 @@ import { forwardRef, memo } from 'react';
 
 import { cn } from '#/lib/utils';
 
-import { COMMIT_ROW_HEIGHT, GRAPH_WIDTH } from './commit-graph-hooks';
+import { COMMIT_ROW_HEIGHT } from './commit-graph-hooks';
 import { CommitGraphSvg } from './commit-graph';
 import type { CommitGraphLayout } from './commit-graph-hooks';
 import type { CommitGraphNode } from './types';
@@ -35,6 +35,7 @@ export function CommitGraphList({
             key={commit.hash}
             ref={index === commits.length - 1 ? lastRowRef : undefined}
             commit={commit}
+            graphWidth={layout.width}
             selected={commit.hash === selectedHash}
             onSelect={onSelect}
           />
@@ -49,10 +50,11 @@ export const CommitRow = memo(
     HTMLDivElement,
     {
       commit: CommitGraphNode;
+      graphWidth: number;
       selected: boolean;
       onSelect: (hash: string) => void;
     }
-  >(function CommitRow({ commit, selected, onSelect }, ref) {
+  >(function CommitRow({ commit, graphWidth, selected, onSelect }, ref) {
     const branchNames = getBranchNames(commit);
 
     return (
@@ -61,10 +63,13 @@ export const CommitRow = memo(
         role="button"
         tabIndex={0}
         className={cn(
-          'group relative z-10 grid cursor-pointer grid-cols-[112px_minmax(0,1fr)] items-center border-b px-3 transition-colors last:border-b-0 hover:bg-muted/60',
-          selected && 'bg-(--brand-low) hover:bg-(--brand-low)'
+          'group relative z-10 grid cursor-pointer items-center border-b px-3 transition-colors last:border-b-0 hover:bg-muted/60',
+          selected && 'bg-(--brand-low)/50 hover:bg-(--brand-low)/75'
         )}
-        style={{ minHeight: COMMIT_ROW_HEIGHT }}
+        style={{
+          minHeight: COMMIT_ROW_HEIGHT,
+          gridTemplateColumns: `${graphWidth}px minmax(0, 1fr)`,
+        }}
         onClick={() => onSelect(commit.hash)}
         onKeyDown={event => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -73,7 +78,7 @@ export const CommitRow = memo(
           }
         }}
       >
-        <div className="h-full" style={{ width: GRAPH_WIDTH }} />
+        <div className="h-full" style={{ width: graphWidth }} />
 
         <div className="min-w-0 py-3">
           <div className="flex min-w-0 items-center gap-2">

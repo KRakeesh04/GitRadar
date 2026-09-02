@@ -11,7 +11,7 @@ export function CommitGraphSvg({
 }) {
   return (
     <svg
-      className="pointer-events-none absolute left-0 top-0 z-0 h-full overflow-visible"
+      className="pointer-events-none absolute left-3 top-0 z-0 h-full overflow-visible"
       width={layout.width}
       height={layout.height}
       viewBox={`0 0 ${layout.width} ${layout.height}`}
@@ -25,7 +25,7 @@ export function CommitGraphSvg({
           stroke={path.color}
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth={2}
+          strokeWidth={1.5}
           opacity={0.85}
         />
       ))}

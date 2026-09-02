@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { CommitDiffViewer } from './commit-diff-viewer';
 import { getBranchNames, relativeTime, shortHash } from './commit-list';
 import type { CommitDiff, CommitGraphNode, CommitInlineDiff } from './types';
+import { Link } from '@tanstack/react-router';
 
 export function CommitDetails({
   diff,
@@ -131,16 +132,20 @@ export function CommitDetailsPanel({
           <StatBox label="Deleted" value={`-${commit.deletions}`} className="text-red-600" />
         </div>
 
-        <Button
-          className="w-full bg-(--brand) text-white hover:bg-(--brand-hover)"
-          onClick={() => {
-            window.location.href = `/repository/${repoId}/commit/${commit.hash}`;
+        <Link
+          to="/repository/$id/diff/$hash"
+          params={{
+            id: repoId,
+            hash: commit.hash,
           }}
+          activeProps={{ className: 'text-black font-bold' }}
         >
-          <FileText className="h-4 w-4" />
-          Open Full Diff
-          <ExternalLink className="ml-auto h-4 w-4" />
-        </Button>
+          <Button className="w-full bg-(--brand) text-white hover:bg-(--brand-hover)">
+            <FileText className="h-4 w-4" />
+            Open Full Diff
+            <ExternalLink className="ml-auto h-4 w-4" />
+          </Button>
+        </Link>
       </div>
     </aside>
   );
