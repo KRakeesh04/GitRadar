@@ -73,6 +73,12 @@ pub fn sync_repository(
     repo_id: i64,
     on_progress: &mut dyn FnMut(i64, i32, i32, i32, &str),
 ) -> DomainResult<i64> {
+    if !repositories::is_repository_enabled_for_sync(conn, repo_id).unwrap_or(false) {
+        return Err(DomainError::InvalidRepository(
+            "Repository is disabled or has no active tracked roots".to_string(),
+        ));
+    }
+
     let job_id = indexing_jobs::create_indexing_job(conn, repo_id, "sync").map_err(|e| {
         DomainError::InvalidRepository(format!("Failed to create indexing job: {e}"))
     })?;
