@@ -97,27 +97,27 @@ function toCommitGraphNode(node: CommitGraphNodeResponse): CommitGraphNode {
   };
 }
 
-export async function getCommitByHash(repo_id: number, hash: string): Promise<Commit> {
-  const commitResponse = await tauri<CommitResponse>('get_commit_by_hash', { repo_id, hash });
+export async function getCommitByHash(repoId: number, hash: string): Promise<Commit> {
+  const commitResponse = await tauri<CommitResponse>('get_commit_by_hash', { repoId, hash });
   return toCommit(commitResponse);
 }
 
 export async function getCommitsByRepoId(repoId: number, limit: number, offset: number): Promise<Commit[]> {
-  const commitsResponse = await tauri<CommitResponse[]>('get_commits', { repo_id: repoId, count: limit, offset });
+  const commitsResponse = await tauri<CommitResponse[]>('get_commits', { repoId, count: limit, offset });
   return commitsResponse.map(toCommit);
 }
 
 export async function getCommitGraphByRepoId(repoId: number, limit: number, offset: number): Promise<CommitGraphNode[]> {
-  const commitGraphResponse = await tauri<CommitGraphNodeResponse[]>('get_commit_graph', { repo_id: repoId, count: limit, offset });
+  const commitGraphResponse = await tauri<CommitGraphNodeResponse[]>('get_commit_graph', { repoId, count: limit, offset });
   return commitGraphResponse.map(toCommitGraphNode);
 }
 
 export async function getCommitDiffByHash(repoId: number, hash: string): Promise<any> {
-  const diff = await tauri<any>('get_commit_diff', { repo_id: repoId, commit_hash: hash });
+  const diff = await tauri<any>('get_commit_diff', { repoId, commitHash: hash });
   return diff;
 }
 
 export async function getCommitInlineDiff(repoId: number, hash: string): Promise<any> {
-  const inlineDiff = await tauri<any>('get_commit_inline_diff', { repo_id: repoId, commit_hash: hash });
+  const inlineDiff = await tauri<any>('get_commit_inline_diff', { repoId, commitHash: hash });
   return inlineDiff;
 }

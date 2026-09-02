@@ -21,6 +21,7 @@ import { Route as RepositoryIdPullsRouteImport } from './routes/repository.$id/p
 import { Route as RepositoryIdInsightsRouteImport } from './routes/repository.$id/insights'
 import { Route as RepositoryIdFilesRouteImport } from './routes/repository.$id/files'
 import { Route as RepositoryIdCommitsRouteRouteImport } from './routes/repository.$id/commits/route'
+import { Route as RepositoryIdDiffHashRouteImport } from './routes/repository.$id/diff.$hash'
 import { Route as RepositoryIdCommitsBranchRouteImport } from './routes/repository.$id/commits/$branch'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -84,6 +85,11 @@ const RepositoryIdCommitsRouteRoute =
     path: '/commits',
     getParentRoute: () => RepositoryIdRouteRoute,
   } as any)
+const RepositoryIdDiffHashRoute = RepositoryIdDiffHashRouteImport.update({
+  id: '/diff/$hash',
+  path: '/diff/$hash',
+  getParentRoute: () => RepositoryIdRouteRoute,
+} as any)
 const RepositoryIdCommitsBranchRoute =
   RepositoryIdCommitsBranchRouteImport.update({
     id: '/$branch',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/repository/$id/pulls': typeof RepositoryIdPullsRoute
   '/repository/$id/': typeof RepositoryIdIndexRoute
   '/repository/$id/commits/$branch': typeof RepositoryIdCommitsBranchRoute
+  '/repository/$id/diff/$hash': typeof RepositoryIdDiffHashRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/repository/$id/pulls': typeof RepositoryIdPullsRoute
   '/repository/$id': typeof RepositoryIdIndexRoute
   '/repository/$id/commits/$branch': typeof RepositoryIdCommitsBranchRoute
+  '/repository/$id/diff/$hash': typeof RepositoryIdDiffHashRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -135,6 +143,7 @@ export interface FileRoutesById {
   '/repository/$id/pulls': typeof RepositoryIdPullsRoute
   '/repository/$id/': typeof RepositoryIdIndexRoute
   '/repository/$id/commits/$branch': typeof RepositoryIdCommitsBranchRoute
+  '/repository/$id/diff/$hash': typeof RepositoryIdDiffHashRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/repository/$id/pulls'
     | '/repository/$id/'
     | '/repository/$id/commits/$branch'
+    | '/repository/$id/diff/$hash'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/repository/$id/pulls'
     | '/repository/$id'
     | '/repository/$id/commits/$branch'
+    | '/repository/$id/diff/$hash'
   id:
     | '__root__'
     | '/'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/repository/$id/pulls'
     | '/repository/$id/'
     | '/repository/$id/commits/$branch'
+    | '/repository/$id/diff/$hash'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -278,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RepositoryIdCommitsRouteRouteImport
       parentRoute: typeof RepositoryIdRouteRoute
     }
+    '/repository/$id/diff/$hash': {
+      id: '/repository/$id/diff/$hash'
+      path: '/diff/$hash'
+      fullPath: '/repository/$id/diff/$hash'
+      preLoaderRoute: typeof RepositoryIdDiffHashRouteImport
+      parentRoute: typeof RepositoryIdRouteRoute
+    }
     '/repository/$id/commits/$branch': {
       id: '/repository/$id/commits/$branch'
       path: '/$branch'
@@ -308,6 +327,7 @@ interface RepositoryIdRouteRouteChildren {
   RepositoryIdInsightsRoute: typeof RepositoryIdInsightsRoute
   RepositoryIdPullsRoute: typeof RepositoryIdPullsRoute
   RepositoryIdIndexRoute: typeof RepositoryIdIndexRoute
+  RepositoryIdDiffHashRoute: typeof RepositoryIdDiffHashRoute
 }
 
 const RepositoryIdRouteRouteChildren: RepositoryIdRouteRouteChildren = {
@@ -316,6 +336,7 @@ const RepositoryIdRouteRouteChildren: RepositoryIdRouteRouteChildren = {
   RepositoryIdInsightsRoute: RepositoryIdInsightsRoute,
   RepositoryIdPullsRoute: RepositoryIdPullsRoute,
   RepositoryIdIndexRoute: RepositoryIdIndexRoute,
+  RepositoryIdDiffHashRoute: RepositoryIdDiffHashRoute,
 }
 
 const RepositoryIdRouteRouteWithChildren =

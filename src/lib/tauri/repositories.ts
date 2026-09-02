@@ -1,24 +1,24 @@
 import { tauri } from "./tauri";
 
-export interface Repository {
-  id: number;
-  rootId: number;
-  name: string;
-  path: string;
-  headBranch: string | null;
-  isDirty: boolean;
-  updatedAt: string;
-}
+// export interface Repository {
+//   id: number;
+//   rootId: number;
+//   name: string;
+//   path: string;
+//   headBranch: string | null;
+//   isDirty: boolean;
+//   updatedAt: string;
+// }
 
-interface RepositoryResponse {
-  id: number;
-  root_id: number;
-  name: string;
-  path: string;
-  head_branch: string | null;
-  is_dirty: boolean;
-  updated_at: string;
-}
+// interface RepositoryResponse {
+//   id: number;
+//   root_id: number;
+//   name: string;
+//   path: string;
+//   head_branch: string | null;
+//   is_dirty: boolean;
+//   updated_at: string;
+// }
 
 export interface RepositoryInfo {
   id: number;
@@ -26,16 +26,18 @@ export interface RepositoryInfo {
   updatedAt: string;
   name: string;
   path: string;
-  git_dir: string;
-  health_score: number;
-  activity_level: string;
-  default_branch: string | null;
-  head_branch: string | null;
-  remote_url: string | null;
-  is_dirty: boolean;
-  total_commits: number;
-  unique_contributors: number;
+  gitDir: string;
+  healthScore: number;
+  activityLevel: string;
+  defaultBranch: string | null;
+  headBranch: string | null;
+  remoteUrl: string | null;
+  isDirty: boolean;
+  totalCommits: number;
+  uniqueContributors: number;
 }
+
+export type Repository = RepositoryInfo;
 
 interface RepositoryInfoResponse {
   id: number;
@@ -54,17 +56,17 @@ interface RepositoryInfoResponse {
   unique_contributors: number;
 }
 
-function toRepository(repository: RepositoryResponse): Repository {
-  return {
-    id: repository.id,
-    rootId: repository.root_id,
-    name: repository.name,
-    path: repository.path,
-    headBranch: repository.head_branch,
-    isDirty: repository.is_dirty,
-    updatedAt: repository.updated_at,
-  };
-}
+// function toRepository(repository: RepositoryResponse): Repository {
+//   return {
+//     id: repository.id,
+//     rootId: repository.root_id,
+//     name: repository.name,
+//     path: repository.path,
+//     headBranch: repository.head_branch,
+//     isDirty: repository.is_dirty,
+//     updatedAt: repository.updated_at,
+//   };
+// }
 
 function toRepositoryInfo(repository: RepositoryInfoResponse): RepositoryInfo {
   return {
@@ -73,15 +75,15 @@ function toRepositoryInfo(repository: RepositoryInfoResponse): RepositoryInfo {
     updatedAt: repository.updated_at,
     name: repository.name,
     path: repository.path,
-    git_dir: repository.git_dir,
-    health_score: repository.health_score,
-    activity_level: repository.activity_level,
-    default_branch: repository.default_branch,
-    head_branch: repository.head_branch,
-    remote_url: repository.remote_url,
-    is_dirty: repository.is_dirty,
-    total_commits: repository.total_commits,
-    unique_contributors: repository.unique_contributors,
+    gitDir: repository.git_dir,
+    healthScore: repository.health_score,
+    activityLevel: repository.activity_level,
+    defaultBranch: repository.default_branch,
+    headBranch: repository.head_branch,
+    remoteUrl: repository.remote_url,
+    isDirty: repository.is_dirty,
+    totalCommits: repository.total_commits,
+    uniqueContributors: repository.unique_contributors,
   };
 }
 
@@ -141,22 +143,22 @@ function toBranch(branch: BranchResponse): Branch {
   };
 }
 
-export async function getRepositories(): Promise<Repository[]> {
-  const repositories = await tauri<RepositoryResponse[]>('get_all_repositories');
-  return repositories.map(toRepository);
+export async function getRepositories(): Promise<RepositoryInfo[]> {
+  const repositories = await tauri<RepositoryInfoResponse[]>('get_all_repositories');
+  return repositories.map(toRepositoryInfo);
 }
 
 export async function getRepositoryInfoById(id: number): Promise<RepositoryInfo | null> {
-  const repositoryInfo = await tauri<RepositoryInfoResponse | null>('get_repository_info', { repo_id: id });
+  const repositoryInfo = await tauri<RepositoryInfoResponse | null>('get_repository_info', { repoId: id });
   return repositoryInfo ? toRepositoryInfo(repositoryInfo) : null;
 }
 
 export async function getBranchesByRepoId(repoId: number): Promise<Branch[]> {
-  const branches = await tauri<BranchResponse[]>('get_repository_branches', { repo_id: repoId });
+  const branches = await tauri<BranchResponse[]>('get_repository_branches', { repoId });
   return branches.map(toBranch);
 }
 
 export async function getBranchByRepoIdAndName(repoId: number, branchName: string): Promise<Branch | null> {
-  const branch = await tauri<BranchResponse | null>('get_branch_info', { repo_id: repoId, name: branchName });
+  const branch = await tauri<BranchResponse | null>('get_branch_info', { repoId, name: branchName });
   return branch ? toBranch(branch) : null;
 }

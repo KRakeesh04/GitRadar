@@ -90,25 +90,25 @@ export interface LanguageStatsResponse {
 }
 
 export async function getContributorsByRepoId(repoId: number): Promise<Contributor[]> {
-  const contributors = await tauri<ContributorResponse[]>('get_contributors', { repo_id: repoId });
+  const contributors = await tauri<ContributorResponse[]>('get_contributors', { repoId });
   return contributors.map(toContributor);
 }
 
 export async function getTopContributorsByRepoId(repoId: number, limit: number): Promise<Contributor[]> {
-  const contributors = await tauri<ContributorResponse[]>('get_top_contributors', { repo_id: repoId, limit });
+  const contributors = await tauri<ContributorResponse[]>('get_top_contributors', { repoId, limit });
   return contributors.map(toContributor);
 }
 
 export async function getContributorByEmail(repoId: number, email: string): Promise<Contributor | null> {
-  const contributor = await tauri<ContributorResponse | null>('get_contributor_by_email', { repo_id: repoId, email });
+  const contributor = await tauri<ContributorResponse | null>('get_contributor_by_email', { repoId, email });
   return contributor ? toContributor(contributor) : null;
 }
 
 export async function getRepositoryActivityDaily(repoId: number, startDate: string | null, endDate: string | null): Promise<RepositoryActivityDaily[]> {
-  const activities = await tauri<RepositoryActivityDailyResponse[]>('get_repository_activity', { repo_id: repoId, start_date: startDate, end_date: endDate });
+  const activities = await tauri<RepositoryActivityDailyResponse[]>('get_repository_activity', { repoId, startDate, endDate });
   return activities.map(toRepositoryActivityDaily);
 }
 export async function getRepoLanguagesStats(repoId: number): Promise<LanguageStatsResponse> {
-  const languagesStatsResponse = await tauri<LanguageStatsResponse>('get_repo_languages_stats', { repo_id: repoId });
+  const languagesStatsResponse = await tauri<LanguageStatsResponse>('get_repo_languages_stats', { repoId });
   return languagesStatsResponse;
 }
