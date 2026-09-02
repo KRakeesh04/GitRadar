@@ -3,6 +3,9 @@ export const queryKeys = {
   repositories: ['repositories'] as const,
   repository: (repoId: number) => ['repository', repoId] as const,
   repositoryFiles: (repoId: number) => ['repository', repoId, 'files'] as const,
+  repositoryFileTree: (repoId: number) => ['repository', repoId, 'file-tree'] as const,
+  repositoryFileContent: (repoId: number, filePath: string) =>
+    ['repository', repoId, 'file-content', filePath] as const,
   repositoryFilesByPath: (repoId: number, filePath: string) => ['repository', repoId, 'files', filePath] as const,
   repositoryFilesByExtension: (repoId: number, extension: string) => ['repository', repoId, 'files', extension] as const,
   repositoryFileStats: (repoId: number) => ['repository', repoId, 'file-stats'] as const,

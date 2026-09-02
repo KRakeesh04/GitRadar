@@ -3,23 +3,42 @@ import { tauri } from "./tauri";
 export interface RepositoryFile {
   id: number,
   repoId: number,
-  path: String,
-  name: String,
-  extension: String | null,
+  path: string,
+  name: string,
+  extension: string | null,
   sizeBytes: number | null,
   isBinary: boolean,
-  lastModifiedAt: String | null,
+  lastModifiedAt: string | null,
+}
+
+export interface RepositoryFileTreeNode {
+  name: string;
+  path: string;
+  is_directory: boolean;
+  size_or_file_count: number;
+  children: RepositoryFileTreeNode[];
+}
+
+export interface RepositoryFileContent {
+  mimeType: string;
+  content: string;
+  isBinary: boolean;
+}
+
+interface RepositoryFileContentResponse {
+  mime_type: string;
+  data: number[];
 }
 
 interface RepositoryFileResponse {
   id: number,
   repo_id: number,
-  path: String,
-  name: String,
-  extension: String | null,
+  path: string,
+  name: string,
+  extension: string | null,
   size_bytes: number | null,
   is_binary: boolean,
-  last_modified_at: String | null,
+  last_modified_at: string | null,
 }
 
 function toRepositoryFile(response: RepositoryFileResponse): RepositoryFile {
@@ -106,41 +125,64 @@ function toFileHotspot(response: FileHotspotResponse): FileHotspot {
 }
 
 export async function getFileDiff(repoId: number, filePath: string, commitHash: string): Promise<any> {
-  const diff = await tauri<any>('get_file_diff', { repo_id: repoId, file_path: filePath, commit_hash: commitHash });
+  const diff = await tauri<any>('get_file_diff', { repoId, filePath, commitHash });
   return diff;
 }
 
 export async function getFileDiffHistory(repoId: number, filePath: string, limit: number, offset: number): Promise<any[]> {
-  const diffHistory = await tauri<any[]>('get_file_diff_history', { repo_id: repoId, file_path: filePath, commit_count: limit, commit_offset: offset });
+  const diffHistory = await tauri<any[]>('get_file_diff_history', { repoId, filePath, commitCount: limit, commitOffset: offset });
   return diffHistory;
 }
 
 export async function getRepoFiles(repoId: number): Promise<RepositoryFile[]> {
-  const filesResponse = await tauri<RepositoryFileResponse[]>('get_repository_files', { repo_id: repoId });
+  const filesResponse = await tauri<RepositoryFileResponse[]>('get_repository_files', { repoId });
   return filesResponse.map(toRepositoryFile);
 }
 
 export async function getRepoFilesByPath(repoId: number, path: string): Promise<RepositoryFile[]> {
-  const filesResponse = await tauri<RepositoryFileResponse[]>('get_repository_file_by_path', { repo_id: repoId, path });
-  return filesResponse.map(toRepositoryFile);
+  const fileResponse = await tauri<RepositoryFileResponse>('get_repository_file_by_path', { repoId, filePath: path });
+  return [toRepositoryFile(fileResponse)];
 }
 
 export async function getFilesByExtension(repoId: number, extension: string): Promise<RepositoryFile[]> {
-  const extensions = await tauri<RepositoryFileResponse[]>('get_files_by_extension', { repo_id: repoId, extension });
+  const extensions = await tauri<RepositoryFileResponse[]>('get_files_by_extension', { repoId, extension });
   return extensions.map(toRepositoryFile);
 }
 
 export async function getFileStats(repoId: number): Promise<CommitFileStat[]> {
-  const fileStatsResponse = await tauri<CommitFileStatResponse[]>('get_file_stats', { repo_id: repoId });
+  const fileStatsResponse = await tauri<CommitFileStatResponse[]>('get_file_stats', { repoId });
   return fileStatsResponse.map(toCommitFileStat);
 }
 
 export async function getFileStatsByPath(repoId: number, filePath: string): Promise<CommitFileStat[]> {
-  const fileStatsResponse = await tauri<CommitFileStatResponse[]>('get_file_stats_by_path', { repo_id: repoId, file_path: filePath });
+  const fileStatsResponse = await tauri<CommitFileStatResponse[]>('get_file_stats_by_path', { repoId, filePath });
   return fileStatsResponse.map(toCommitFileStat);
 }
 
 export async function getFileHotspots(repoId: number): Promise<FileHotspot[]> {
-  const hotspotsResponse = await tauri<FileHotspotResponse[]>('get_file_hotspots', { repo_id: repoId });
+  const hotspotsResponse = await tauri<FileHotspotResponse[]>('get_file_hotspots', { repoId });
   return hotspotsResponse.map(toFileHotspot);
+}
+
+export async function getRepositoryFileTree(repoId: number): Promise<RepositoryFileTreeNode[]> {
+  return tauri<RepositoryFileTreeNode[]>('get_repository_file_tree', { repoId });
+}
+
+export async function getRepositoryFileContent(
+  repoId: number,
+  filePath: string,
+): Promise<RepositoryFileContent> {
+  const response = await tauri<RepositoryFileContentResponse>('get_repository_file_content', {
+    repoId,
+    filePath,
+  });
+  const content = new TextDecoder().decode(new Uint8Array(response.data));
+  const isBinary = !response.mime_type.startsWith('text/') &&
+    !['application/json', 'application/javascript', 'application/xml'].includes(response.mime_type);
+
+  return {
+    mimeType: response.mime_type,
+    content: isBinary ? '[Binary file cannot be previewed]' : content,
+    isBinary,
+  };
 }

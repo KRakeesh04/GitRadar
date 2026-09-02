@@ -1,11 +1,34 @@
 import { queryKeys } from "#/lib/query-keys";
-import { getFileDiff, getFileDiffHistory, getFileHotspots, getFilesByExtension, getFileStatsByPath, getFileStats, getRepoFiles, getRepoFilesByPath } from "#/lib/tauri/files";
+import { getFileDiff, getFileDiffHistory, getFileHotspots, getFilesByExtension, getFileStatsByPath, getFileStats, getRepoFiles, getRepoFilesByPath, getRepositoryFileContent, getRepositoryFileTree } from "#/lib/tauri/files";
+import { getBranchesByRepoId } from "#/lib/tauri/repositories";
 import { useQuery } from "@tanstack/react-query";
 
 export function useRepoFiles(repoId: number) {
   return useQuery({
     queryKey: queryKeys.repositoryFiles(repoId),
     queryFn: () => getRepoFiles(repoId),
+  });
+}
+
+export function useRepoFileTree(repoId: number) {
+  return useQuery({
+    queryKey: queryKeys.repositoryFileTree(repoId),
+    queryFn: () => getRepositoryFileTree(repoId),
+  });
+}
+
+export function useRepoBranches(repoId: number) {
+  return useQuery({
+    queryKey: queryKeys.branches(repoId),
+    queryFn: () => getBranchesByRepoId(repoId),
+  });
+}
+
+export function useRepoFileContent(repoId: number, filePath: string | null) {
+  return useQuery({
+    queryKey: queryKeys.repositoryFileContent(repoId, filePath ?? ''),
+    queryFn: () => getRepositoryFileContent(repoId, filePath ?? ''),
+    enabled: Boolean(filePath),
   });
 }
 
