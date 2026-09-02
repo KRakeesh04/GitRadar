@@ -101,7 +101,7 @@ pub fn get_repository_by_id(conn: &Connection, id: i64) -> Result<Option<Reposit
     let mut stmt = conn.prepare(
         "SELECT id, root_id, name, path, git_dir_path, repo_type, remote_url, default_branch, head_branch,
                 is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
-                created_at, updated_at, health_score, total_commits, unique_contributors
+                created_at, updated_at, health_score, total_commits, weekly_commits, unique_contributors
          FROM repository_summary WHERE id = ?1",
     )?;
 

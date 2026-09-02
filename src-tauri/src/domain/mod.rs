@@ -11,8 +11,8 @@ pub use branch::{Branch, BranchType};
 pub use commit::Commit;
 pub use contributor::Contributor;
 pub use file::{
-    CommitFileStat, FileHotspot, LanguageStat, LanguageStats, RepositoryActivityDaily,
-    RepositoryFile,
+    CommitFileStat, FileData, FileHotspot, FileTreeNode, LanguageStat, LanguageStats,
+    RepositoryActivityDaily, RepositoryFile,
 };
 pub use repository::Repository;
 pub use tracked_root::TrackedRoot;

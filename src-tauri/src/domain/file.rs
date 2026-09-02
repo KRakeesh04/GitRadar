@@ -1,4 +1,6 @@
-#[derive(Debug, Clone)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, Serialize)]
 pub struct RepositoryFile {
     pub id: i64,
     pub repo_id: i64,
@@ -10,7 +12,7 @@ pub struct RepositoryFile {
     pub last_modified_at: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CommitFileStat {
     pub id: i64,
     pub repo_id: i64,
@@ -22,7 +24,7 @@ pub struct CommitFileStat {
     pub total_changes: i32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FileHotspot {
     pub id: i64,
     pub repo_id: i64,
@@ -34,7 +36,7 @@ pub struct FileHotspot {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RepositoryActivityDaily {
     pub id: i64,
     pub repo_id: i64,
@@ -45,19 +47,19 @@ pub struct RepositoryActivityDaily {
     pub files_changed: i32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LanguageStats {
     pub total_bytes: u64,
     pub languages: Vec<LanguageStat>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LanguageStat {
     pub language: String,
     pub bytes: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FileTreeNode {
     pub name: String,
     pub path: String,
@@ -66,7 +68,7 @@ pub struct FileTreeNode {
     pub children: Vec<FileTreeNode>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FileData {
     pub mime_type: String,
     pub data: Vec<u8>,

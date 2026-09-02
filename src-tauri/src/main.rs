@@ -57,6 +57,8 @@ fn main() {
             commands::commits::get_file_diff_history,
             // File commands
             commands::files::get_repository_files,
+            commands::files::get_repository_file_tree,
+            commands::files::get_repository_file_content,
             commands::files::get_repository_file_by_path,
             commands::files::get_files_by_extension,
             commands::files::get_file_stats,

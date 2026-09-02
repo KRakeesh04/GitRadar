@@ -2,7 +2,10 @@ use serde::Serialize;
 use tauri::State;
 
 use crate::{
-    domain::{CommitFileStat, FileHotspot, LanguageStat, LanguageStats, RepositoryFile},
+    domain::{
+        CommitFileStat, FileData, FileHotspot, FileTreeNode, LanguageStat, LanguageStats,
+        RepositoryFile,
+    },
     infrastructure::database::connection::get_connection,
     services::file_service,
     state::AppState,
@@ -133,6 +136,25 @@ pub fn get_repository_files(
                 .collect()
         })
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_repository_file_tree(
+    repo_id: i64,
+    state: State<'_, AppState>,
+) -> Result<Vec<FileTreeNode>, String> {
+    let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
+    file_service::get_repository_file_tree(&conn, repo_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_repository_file_content(
+    repo_id: i64,
+    file_path: String,
+    state: State<'_, AppState>,
+) -> Result<FileData, String> {
+    let conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;
+    file_service::get_repository_file_content(&conn, repo_id, &file_path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
