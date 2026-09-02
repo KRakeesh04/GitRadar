@@ -7,13 +7,16 @@ use super::DomainResult;
 pub struct Repository {
     // Identity
     pub id: RepositoryId,
-    pub root_id: i64,
+    pub root_ids: Vec<i64>,
+    pub root_id: Option<i64>,
+    pub created_at: String,
     pub updated_at: String,
     pub name: String,
     pub path: PathBuf,
     pub git_dir: PathBuf,
 
     // Business State
+    pub is_enabled: bool,
     pub health_score: HealthScore,
     pub activity_level: ActivityLevel,
 
@@ -42,11 +45,14 @@ impl Repository {
 
         Ok(Repository {
             id: repo_id,
-            root_id: 0,
+            root_ids: Vec::new(),
+            root_id: None,
+            created_at: String::new(),
             updated_at: String::new(),
             name,
             path,
             git_dir,
+            is_enabled: true,
             health_score: HealthScore::new(0.5).unwrap(), // Default: Fair
             activity_level: ActivityLevel::VeryLow,
             default_branch,
