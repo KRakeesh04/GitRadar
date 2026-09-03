@@ -529,8 +529,7 @@ pub fn get_recent_repositories(
                 remote_url, is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
                 created_at, updated_at, total_commits, weekly_commits, unique_contributors
          FROM repository_summary 
-         WHERE last_commit_at IS NOT NULL
-         ORDER BY last_commit_at DESC
+         ORDER BY COALESCE(last_commit_at, updated_at) DESC
          LIMIT ?1 OFFSET ?2",
     )?;
 
