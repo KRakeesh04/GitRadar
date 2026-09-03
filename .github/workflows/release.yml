@@ -3,7 +3,7 @@ name: Build and Release GitRadar
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 permissions:
   contents: write
@@ -15,19 +15,20 @@ jobs:
       matrix:
         include:
           - platform: ubuntu-22.04
-            args: ""
+            args: ''
 
           - platform: windows-latest
-            args: ""
+            args: ''
 
           - platform: macos-latest
-            args: "--target universal-apple-darwin"
+            args: '--target universal-apple-darwin'
 
     runs-on: ${{ matrix.platform }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # v5 uses the Node 24 runtime required by GitHub-hosted runners.
+        uses: actions/checkout@v5
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -54,13 +55,15 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build and release
-        uses: tauri-apps/tauri-action@v1
+        # v0.6.2 includes the current release-upload handling and Node 24 runtime.
+        # Pinning avoids the legacy v1 tag used by the cancelled Windows release.
+        uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: .
           tagName: ${{ github.ref_name }}
-          releaseName: "GitRadar ${{ github.ref_name }}"
+          releaseName: 'GitRadar ${{ github.ref_name }}'
           releaseBody: |
             ## GitRadar ${{ github.ref_name }}
 
