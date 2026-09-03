@@ -25,7 +25,10 @@ function RepositoryLayout() {
 
   return (
     <main className="flex flex-col gap-4 p-6">
-      <Button variant="default" className="mb-2 flex items-center cursor-pointer w-18 bg-muted-background text-foreground hover:bg-muted" onClick={() => window.history.back()}>
+      <Button variant="default" className="mb-2 flex items-center cursor-pointer w-18 bg-muted-background text-foreground hover:bg-muted" onClick={() => {
+        // Navigate to the parent route (repository list)
+        window.location.href = '/repository';
+      }}>
         <ChevronLeft className="h-4 w-4" />
         <span>Back</span>
       </Button>
