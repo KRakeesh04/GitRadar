@@ -15,6 +15,7 @@ import {
   getRepositoriesByRootId,
   getRepositoryInfoById,
   getStarredRepositories,
+  searchRepositories,
   setRepositoryEnabled,
   setRepositoryStarred,
 } from '#/lib/tauri/repositories';
@@ -39,10 +40,26 @@ export function usePaginatedRepositories(params: {
   filter?: string;
   limit?: number;
   cursor?: number | null;
+  enabled?: boolean;
 }) {
   return useQuery({
     queryKey: queryKeys.paginatedRepositories(params),
     queryFn: () => getPaginatedRepositories(params),
+    enabled: params.enabled ?? true,
+  });
+}
+
+export function useSearchedRepositories(params: {
+  query: string;
+  filter?: string;
+  limit?: number;
+  cursor?: number | null;
+}) {
+  const enabled = params.query.trim().length > 0;
+  return useQuery({
+    queryKey: queryKeys.searchedRepositories(params),
+    queryFn: () => searchRepositories(params),
+    enabled,
   });
 }
 
