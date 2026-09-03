@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bell,
   Clock,
@@ -16,6 +16,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { useLocation } from '@tanstack/react-router';
+import { useQueries } from '@tanstack/react-query';
 
 import {
   Sidebar,
@@ -32,7 +33,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import { useTheme } from '#/contexts/ThemeContext';
-import { useRecentRepositories, useStarredRepositories } from '#/hooks/useRepositories';
+import { getRecentRepositories, getStarredRepositories } from '#/lib/tauri/repositories';
+import { queryKeys } from '#/lib/query-keys';
 import type { RepositoryInfo } from '#/lib/tauri/repositories';
 
 interface SidebarmenuItem {
@@ -107,45 +109,64 @@ export function AppSidebar() {
   const { resolvedTheme, setTheme } = useTheme();
   const { toggleSidebar, open } = useSidebar();
 
-  const [recentOffset, setRecentOffset] = useState(0);
-  const [starredOffset, setStarredOffset] = useState(0);
-  const [recentRepos, setRecentRepos] = useState<RepositoryInfo[]>([]);
-  const [starredRepos, setStarredRepos] = useState<RepositoryInfo[]>([]);
+  const [recentOffsets, setRecentOffsets] = useState<number[]>([0]);
+  const [starredOffsets, setStarredOffsets] = useState<number[]>([0]);
+  const [activeTab, setActiveTab] = useState<'recent' | 'starred'>(() => {
+    if (typeof window === 'undefined') return 'recent';
+    const saved = window.localStorage.getItem('sidebar-active-tab');
+    return saved === 'starred' ? 'starred' : 'recent';
+  });
 
-  const recentQuery = useRecentRepositories(PAGE_SIZE, recentOffset);
-  const starredQuery = useStarredRepositories(PAGE_SIZE, starredOffset);
+  // Query every loaded page so the list is derived from the cache and stays in
+  // sync when mutations invalidate/refetch these query keys.
+  const recentQueries = useQueries({
+    queries: recentOffsets.map(offset => ({
+      queryKey: queryKeys.recentRepositories(PAGE_SIZE, offset),
+      queryFn: () => getRecentRepositories(PAGE_SIZE, offset),
+    })),
+  });
+  const starredQueries = useQueries({
+    queries: starredOffsets.map(offset => ({
+      queryKey: queryKeys.starredRepositories(PAGE_SIZE, offset),
+      queryFn: () => getStarredRepositories(PAGE_SIZE, offset),
+    })),
+  });
 
-  useEffect(() => {
-    const batch = (recentQuery.data ?? []).filter(
-      repo => !recentRepos.some(existing => existing.id === repo.id)
-    );
-    if (batch.length > 0) {
-      setRecentRepos(prev => [...prev, ...batch]);
+  const recentRepos = useMemo(() => {
+    const seen = new Map<number, RepositoryInfo>();
+    for (const q of recentQueries) {
+      for (const repo of q.data ?? []) seen.set(repo.id, repo);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recentQuery.data]);
+    return [...seen.values()];
+  }, [recentQueries]);
 
-  useEffect(() => {
-    const batch = (starredQuery.data ?? []).filter(
-      repo => !starredRepos.some(existing => existing.id === repo.id)
-    );
-    if (batch.length > 0) {
-      setStarredRepos(prev => [...prev, ...batch]);
+  const starredRepos = useMemo(() => {
+    const seen = new Map<number, RepositoryInfo>();
+    for (const q of starredQueries) {
+      for (const repo of q.data ?? []) seen.set(repo.id, repo);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [starredQuery.data]);
+    return [...seen.values()];
+  }, [starredQueries]);
 
-  const recentHasMore = (recentQuery.data?.length ?? 0) >= PAGE_SIZE;
-  const starredHasMore = (starredQuery.data?.length ?? 0) >= PAGE_SIZE;
+  const lastRecentQuery = recentQueries[recentQueries.length - 1];
+  const lastStarredQuery = starredQueries[starredQueries.length - 1];
+
+  const recentHasMore = (lastRecentQuery.data?.length ?? 0) >= PAGE_SIZE;
+  const starredHasMore = (lastStarredQuery.data?.length ?? 0) >= PAGE_SIZE;
+
+  const isLoadingRecent =
+    recentQueries.length > 0 && recentRepos.length === 0 && recentQueries.some(q => q.isLoading);
+  const isLoadingStarred =
+    starredQueries.length > 0 && starredRepos.length === 0 && starredQueries.some(q => q.isLoading);
 
   const loadMoreRecent = () => {
-    if (!recentHasMore || recentQuery.isFetching) return;
-    setRecentOffset(prev => prev + PAGE_SIZE);
+    if (!recentHasMore) return;
+    setRecentOffsets(prev => [...prev, prev[prev.length - 1] + PAGE_SIZE]);
   };
 
   const loadMoreStarred = () => {
-    if (!starredHasMore || starredQuery.isFetching) return;
-    setStarredOffset(prev => prev + PAGE_SIZE);
+    if (!starredHasMore) return;
+    setStarredOffsets(prev => [...prev, prev[prev.length - 1] + PAGE_SIZE]);
   };
 
   const toggleTheme = () => {
@@ -205,7 +226,18 @@ export function AppSidebar() {
         </SidebarGroupContent>
         <Separator className="bg-sidebar-border" />
         <SidebarGroupContent className="min-h-0 flex-1 px-3 py-2 group-data-[collapsible=icon]:hidden">
-          <Tabs defaultValue="recent" className="flex h-full min-h-0 w-full flex-col gap-3">
+          <Tabs
+            value={activeTab}
+            onValueChange={value => {
+              if (value === 'recent' || value === 'starred') {
+                setActiveTab(value);
+                if (typeof window !== 'undefined') {
+                  window.localStorage.setItem('sidebar-active-tab', value);
+                }
+              }
+            }}
+            className="flex h-full min-h-0 w-full flex-col gap-3"
+          >
             <TabsList className="h-8 w-fit shrink-0 grid-cols-2 bg-muted/50 p-0">
               <TabsTrigger value="recent" className="h-8 rounded-md px-2.5 text-sm">
                 <Clock className="w-4 h-4" />
@@ -219,7 +251,7 @@ export function AppSidebar() {
 
             <TabsContent value="recent" className="mt-0 min-h-0 flex-1 overflow-hidden">
               <div className="h-full space-y-1 overflow-y-auto pr-1">
-                {recentQuery.isLoading && recentRepos.length === 0 ? (
+                {isLoadingRecent ? (
                   <div className="space-y-2 py-2 min-h-55">
                     {[1, 2, 3, 4, 5, 6].map(i => (
                       <div key={i} className="animate-pulse space-y-1.5 px-0.5">
@@ -229,7 +261,9 @@ export function AppSidebar() {
                     ))}
                   </div>
                 ) : recentRepos.length === 0 ? (
-                  <p className="py-4 text-center text-xs text-muted-foreground">No recent repositories</p>
+                  <p className="py-4 text-center text-xs text-muted-foreground">
+                    No recent repositories
+                  </p>
                 ) : (
                   <>
                     {recentRepos.map((repo, index) => (
@@ -238,10 +272,10 @@ export function AppSidebar() {
                     {recentHasMore && (
                       <button
                         onClick={loadMoreRecent}
-                        disabled={recentQuery.isFetching}
+                        disabled={lastRecentQuery.isFetching}
                         className="w-full rounded-md py-1.5 text-center text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground cursor-pointer disabled:opacity-50"
                       >
-                        {recentQuery.isFetching ? 'Loading...' : 'Load more'}
+                        {lastRecentQuery.isFetching ? 'Loading...' : 'Load more'}
                       </button>
                     )}
                   </>
@@ -251,7 +285,7 @@ export function AppSidebar() {
 
             <TabsContent value="starred" className="mt-0 min-h-0 flex-1 overflow-hidden">
               <div className="h-full space-y-1 overflow-y-auto pr-1">
-                {starredQuery.isLoading && starredRepos.length === 0 ? (
+                {isLoadingStarred ? (
                   <div className="space-y-2 py-2 min-h-55">
                     {[1, 2, 3, 4, 5, 6].map(i => (
                       <div key={i} className="animate-pulse space-y-1.5 px-0.5">
@@ -261,7 +295,9 @@ export function AppSidebar() {
                     ))}
                   </div>
                 ) : starredRepos.length === 0 ? (
-                  <p className="py-4 text-center text-xs text-muted-foreground">No starred repositories</p>
+                  <p className="py-4 text-center text-xs text-muted-foreground">
+                    No starred repositories
+                  </p>
                 ) : (
                   <>
                     {starredRepos.map((repo, index) => (
@@ -270,10 +306,10 @@ export function AppSidebar() {
                     {starredHasMore && (
                       <button
                         onClick={loadMoreStarred}
-                        disabled={starredQuery.isFetching}
+                        disabled={lastStarredQuery.isFetching}
                         className="w-full rounded-md py-1.5 text-center text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground cursor-pointer disabled:opacity-50"
                       >
-                        {starredQuery.isFetching ? 'Loading...' : 'Load more'}
+                        {lastStarredQuery.isFetching ? 'Loading...' : 'Load more'}
                       </button>
                     )}
                   </>
