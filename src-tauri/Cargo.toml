@@ -1,5 +1,5 @@
 [package]
-name = "GitRadar"
+name = "gitradar"
 version = "0.1.0"
 description = "A desktop application that provides analytics and insights for local Git repositories"
 authors = ["KRakeesh04"]
