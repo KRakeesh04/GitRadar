@@ -26,7 +26,7 @@ import {
   useToggleTrackedRoot,
   useTrackedRoots,
 } from '#/hooks/useTrackedRoots';
-import { useToggleRepositoryEnabled, useRepositories  } from '#/hooks/useRepositories';
+import { useToggleRepositoryEnabled, useRepositories } from '#/hooks/useRepositories';
 import type { TrackedRoot } from '#/lib/tauri/tracked-roots';
 import type { Repository } from '#/lib/tauri/repositories';
 import { useSyncRepositories } from '#/hooks/useSync';

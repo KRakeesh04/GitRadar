@@ -4,10 +4,13 @@ import {
   getBranchByRepoIdAndName,
   getBranchesByRepoId,
   getPaginatedRepositories,
+  getRecentRepositories,
   getRepositories,
   getRepositoriesByRootId,
   getRepositoryInfoById,
+  getStarredRepositories,
   setRepositoryEnabled,
+  setRepositoryStarred,
 } from "#/lib/tauri/repositories";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -46,6 +49,34 @@ export function useToggleRepositoryEnabled() {
       queryClient.invalidateQueries({ queryKey: queryKeys.repositories });
       queryClient.invalidateQueries({ queryKey: ['repositories'] });
     },
+  });
+}
+
+export function useToggleRepositoryStarred() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ repoId, isStarred }: { repoId: number; isStarred: boolean }) =>
+      setRepositoryStarred(repoId, isStarred),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.repositories });
+      queryClient.invalidateQueries({ queryKey: ['repositories'] });
+      queryClient.invalidateQueries({ queryKey: ['repositories', 'starred'] });
+      queryClient.invalidateQueries({ queryKey: ['repositories', 'recent'] });
+    },
+  });
+}
+
+export function useStarredRepositories(limit = 10, offset = 0) {
+  return useQuery({
+    queryKey: queryKeys.starredRepositories(limit, offset),
+    queryFn: () => getStarredRepositories(limit, offset),
+  });
+}
+
+export function useRecentRepositories(limit = 10, offset = 0) {
+  return useQuery({
+    queryKey: queryKeys.recentRepositories(limit, offset),
+    queryFn: () => getRecentRepositories(limit, offset),
   });
 }
 

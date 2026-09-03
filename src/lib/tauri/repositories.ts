@@ -5,6 +5,8 @@ export interface RepositoryInfo {
   rootIds: number[];
   rootId: number | null;
   isEnabled: boolean;
+  isStarred: boolean;
+  starredAt: string | null;
   createdAt: string;
   updatedAt: string;
   name: string;
@@ -27,6 +29,8 @@ interface RepositoryInfoResponse {
   root_ids?: number[];
   root_id?: number | null;
   is_enabled: boolean;
+  is_starred: boolean;
+  starred_at: string | null;
   created_at: string;
   updated_at: string;
   name: string;
@@ -62,6 +66,8 @@ function toRepositoryInfo(repository: RepositoryInfoResponse): RepositoryInfo {
     rootIds: repository.root_ids ?? (repository.root_id != null ? [repository.root_id] : []),
     rootId: repository.root_id ?? (repository.root_ids?.[0] ?? null),
     isEnabled: repository.is_enabled,
+    isStarred: repository.is_starred,
+    starredAt: repository.starred_at,
     createdAt: repository.created_at,
     updatedAt: repository.updated_at,
     name: repository.name,
@@ -167,6 +173,18 @@ export async function getPaginatedRepositories(params: {
 
 export function setRepositoryEnabled(repoId: number, enabled: boolean): Promise<boolean> {
   return tauri<boolean>('set_repository_enabled', { repoId, enabled });
+}
+
+export function setRepositoryStarred(repoId: number, isStarred: boolean): Promise<boolean> {
+  return tauri<boolean>('set_repository_starred', { repoId, isStarred });
+}
+
+export function getStarredRepositories(limit?: number, offset?: number): Promise<RepositoryInfo[]> {
+  return tauri<RepositoryInfoResponse[]>('get_starred_repositories', { limit, offset }).then(repos => repos.map(toRepositoryInfo));
+}
+
+export function getRecentRepositories(limit?: number, offset?: number): Promise<RepositoryInfo[]> {
+  return tauri<RepositoryInfoResponse[]>('get_recent_repositories', { limit, offset }).then(repos => repos.map(toRepositoryInfo));
 }
 
 export async function getRepositoryInfoById(id: number): Promise<RepositoryInfo | null> {
