@@ -9,6 +9,7 @@ mod services;
 mod state;
 
 use infrastructure::database::{connection::get_connection, migrations::run_migrations};
+use services::search_index_service;
 use state::AppState;
 use tauri::Manager;
 
@@ -28,6 +29,15 @@ fn main() {
             let conn = get_connection(&db_path).expect("failed to open application database");
             run_migrations(&conn).expect("failed to migrate application database");
 
+            // Rebuild the cross-entity searchable-text index in the background so
+            // search works even if no full sync has run yet. Non-blocking.
+            let rebuild_path = db_path.clone();
+            std::thread::spawn(move || {
+                if let Ok(mut conn) = get_connection(&rebuild_path) {
+                    let _ = search_index_service::rebuild_search_index_from_db(&mut conn);
+                }
+            });
+
             app.manage(AppState {
                 db_path,
                 app_data_dir,
@@ -41,6 +51,7 @@ fn main() {
             commands::repos::get_all_repositories,
             commands::repos::get_repositories_by_root_id,
             commands::repos::get_paginated_repositories,
+            commands::repos::search_repositories,
             commands::repos::set_repository_enabled,
             commands::repos::discover_repositories,
             commands::repos::add_tracked_root_path,
@@ -77,6 +88,10 @@ fn main() {
             commands::contributors::get_contributors,
             commands::contributors::get_top_contributors,
             commands::contributors::get_contributor_by_email,
+            // Search commands
+            commands::search::search_everything,
+            commands::search::reindex_search_index,
+            commands::search::rebuild_search_index,
             // Sync commands
             commands::sync::sync_repository,
             commands::sync::sync_branches,

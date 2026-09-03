@@ -14,7 +14,7 @@ use crate::{
     infrastructure::{
         database::repositories::{
             analytics, branches, commits, contributors, file_stats, indexing_jobs, repositories,
-            repository_files, repository_health, working_tree,
+            repository_files, repository_health, search_index, working_tree,
         },
         git,
     },
@@ -86,7 +86,7 @@ pub fn sync_repository(
     indexing_jobs::mark_indexing_job_started(conn, job_id).map_err(|e| {
         DomainError::InvalidRepository(format!("Failed to start indexing job: {e}"))
     })?;
-    on_progress(job_id, 0, 0, 9, "running");
+    on_progress(job_id, 0, 0, 10, "running");
 
     repositories::update_repository_sync_state(
         conn,
@@ -110,7 +110,7 @@ pub fn sync_repository(
             DomainError::InvalidRepository(format!("Failed to open transaction: {e}"))
         })?;
 
-        let total_steps = 9usize;
+        let total_steps = 10usize;
         let mut completed_steps = 0usize;
 
         sync_branches_with_context(&tx, repo_id, &context)?;
@@ -206,6 +206,24 @@ pub fn sync_repository(
         upsert_repository_health_snapshot(&tx, repo_id)?;
         completed_steps += 1;
         update_indexing_progress(&tx, job_id, completed_steps, total_steps)?;
+        on_progress(
+            job_id,
+            90,
+            completed_steps as i32,
+            total_steps as i32,
+            "running",
+        );
+
+        sync_search_index_with_snapshot(&tx, repo_id, &snapshot)?;
+        completed_steps += 1;
+        update_indexing_progress(&tx, job_id, completed_steps, total_steps)?;
+        on_progress(
+            job_id,
+            100,
+            completed_steps as i32,
+            total_steps as i32,
+            "running",
+        );
 
         tx.commit().map_err(|e| {
             DomainError::InvalidRepository(format!("Failed to commit sync transaction: {e}"))
@@ -314,6 +332,28 @@ pub fn sync_repository_files(conn: &mut Connection, repo_id: i64) -> DomainResul
         .map_err(|e| DomainError::InvalidRepository(format!("Failed to open transaction: {e}")))?;
 
     sync_repository_files_with_context(&tx, repo_id, &context)?;
+    tx.commit().map_err(|e| {
+        DomainError::InvalidRepository(format!("Failed to commit transaction: {e}"))
+    })?;
+    Ok(())
+}
+
+/// Rebuild the searchable-text index for a single repository in isolation.
+/// Used by the standalone reindex command; the full sync path reuses the
+/// in-memory snapshot instead of re-collecting it here.
+pub fn sync_search_index(conn: &mut Connection, repo_id: i64) -> DomainResult<()> {
+    let repo_path = load_repository_path(conn, repo_id)?;
+    let repo = Repository::open(&repo_path)
+        .map_err(|e| DomainError::InvalidRepository(format!("Failed to open repository: {e}")))?;
+    let context = RepoSyncContext::new(&repo_path, repo)?;
+    let snapshot = collect_history_snapshot(&context.repo)?;
+    let tx = conn
+        .transaction()
+        .map_err(|e| DomainError::InvalidRepository(format!("Failed to open transaction: {e}")))?;
+
+    sync_branches_with_context(&tx, repo_id, &context)?;
+    sync_repository_files_with_context(&tx, repo_id, &context)?;
+    sync_search_index_with_snapshot(&tx, repo_id, &snapshot)?;
     tx.commit().map_err(|e| {
         DomainError::InvalidRepository(format!("Failed to commit transaction: {e}"))
     })?;
@@ -911,6 +951,82 @@ fn sync_repository_files_with_context(
     }
 
     Ok(discovered_files.len())
+}
+
+/// Rebuild the cross-entity searchable-text index for a repository from the
+/// already-collected sync snapshot and branch list. Stored per-entity documents
+/// let the UI search across commits, contributors, files, and branches.
+fn sync_search_index_with_snapshot(
+    conn: &Connection,
+    repo_id: i64,
+    snapshot: &RepoHistorySnapshot,
+) -> DomainResult<usize> {
+    search_index::clear_repo_entries(conn, repo_id).map_err(|e| {
+        DomainError::InvalidRepository(format!("Failed to clear search index: {e}"))
+    })?;
+
+    let mut inserted = 0usize;
+
+    // Commits: title = subject, body = author + subject + body (helps matching).
+    for commit in &snapshot.commits {
+        let mut body = String::with_capacity(
+            commit.author_name.len() + commit.author_email.len() + commit.subject.len() + commit.body.len(),
+        );
+        body.push_str(&commit.author_name);
+        body.push(' ');
+        body.push_str(&commit.author_email);
+        body.push(' ');
+        body.push_str(&commit.subject);
+        body.push(' ');
+        body.push_str(&commit.body);
+        search_index::insert_entry(conn, repo_id, "commit", 0, &commit.subject, &body).map_err(
+            |e| DomainError::InvalidRepository(format!("Failed to index commit: {e}")),
+        )?;
+        inserted += 1;
+    }
+
+    // Contributors: title = name, body = email.
+    for contributor in snapshot.contributors.values() {
+        let body = contributor.author_email.as_deref().unwrap_or("");
+        search_index::insert_entry(conn, repo_id, "contributor", 0, &contributor.author_name, body)
+            .map_err(|e| {
+                DomainError::InvalidRepository(format!("Failed to index contributor: {e}"))
+            })?;
+        inserted += 1;
+    }
+
+    // Files: title = file name, body = full path + extension. Read from the
+    // already-synced repository_files table (avoids re-walking the disk).
+    let synced_files = repository_files::get_repository_files(conn, repo_id).map_err(|e| {
+        DomainError::InvalidRepository(format!("Failed to load files for search index: {e}"))
+    })?;
+    for file in synced_files {
+        let mut body = file.file_path.clone();
+        if let Some(ext) = &file.extension {
+            body.push(' ');
+            body.push_str(ext);
+        }
+        search_index::insert_entry(conn, repo_id, "file", file.id, &file.file_name, &body).map_err(
+            |e| DomainError::InvalidRepository(format!("Failed to index file: {e}")),
+        )?;
+        inserted += 1;
+    }
+
+    // Branches: title = name; body mirrors name for prefix matching.
+    let branch_rows = branches::get_all_branches(conn, repo_id).map_err(|e| {
+        DomainError::InvalidRepository(format!("Failed to load branches for search index: {e}"))
+    })?;
+    if let Some(rows) = branch_rows {
+        for branch in rows {
+            search_index::insert_entry(conn, repo_id, "branch", branch.id, &branch.name, &branch.name)
+                .map_err(|e| {
+                    DomainError::InvalidRepository(format!("Failed to index branch: {e}"))
+                })?;
+            inserted += 1;
+        }
+    }
+
+    Ok(inserted)
 }
 
 fn sync_commit_file_stats_with_snapshot(

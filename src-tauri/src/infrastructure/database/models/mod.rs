@@ -8,6 +8,7 @@ pub mod file_change;
 pub mod indexing_job;
 pub mod repository;
 pub mod repository_health;
+pub mod search_index;
 pub mod setting;
 pub mod tracked_root;
 pub mod working_tree;

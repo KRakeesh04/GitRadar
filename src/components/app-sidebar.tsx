@@ -15,7 +15,7 @@ import {
   Star,
   Sun,
 } from 'lucide-react';
-import { useLocation } from '@tanstack/react-router';
+import { useLocation, Link } from '@tanstack/react-router';
 import { useQueries } from '@tanstack/react-query';
 
 import {
@@ -83,8 +83,9 @@ const PAGE_SIZE = 11;
 
 function RepoListItem({ repo }: { repo: RepositoryInfo }) {
   return (
-    <a
-      href={`/repository/${repo.id}`}
+    <Link
+      to="/repository/$id"
+      params={{ id: String(repo.id) }}
       className="block rounded-md px-0.5 py-0.75 text-sidebar-foreground transition-colors hover:text-(--brand)"
     >
       <div className="flex items-center gap-1.5">
@@ -100,7 +101,7 @@ function RepoListItem({ repo }: { repo: RepositoryInfo }) {
         <GitBranch className="h-3 w-3" />
         <span className="truncate">{repo.headBranch ?? 'No branch'}</span>
       </div>
-    </a>
+    </Link>
   );
 }
 
@@ -207,7 +208,7 @@ export function AppSidebar() {
                   )}
                   className="h-9 rounded-md px-3 text-sm font-normal data-active:bg-(--brand) data-active:text-white data-active:hover:bg-(--brand) data-active:hover:text-white"
                   render={
-                    <a href={item.link}>
+                    <Link to={item.link}>
                       {!open && item.indicator ? (
                         <span className="text-(--brand)">{item.icon}</span>
                       ) : (
@@ -217,7 +218,7 @@ export function AppSidebar() {
                       {item.indicator ? (
                         <span className="ml-auto h-2 w-2 rounded-full bg-(--brand)" />
                       ) : null}
-                    </a>
+                    </Link>
                   }
                 />
               </SidebarMenuItem>
@@ -239,11 +240,11 @@ export function AppSidebar() {
             className="flex h-full min-h-0 w-full flex-col gap-3"
           >
             <TabsList className="h-8 w-fit shrink-0 grid-cols-2 bg-muted/50 p-0">
-              <TabsTrigger value="recent" className="h-8 rounded-md px-2.5 text-sm">
+              <TabsTrigger value="recent" className="h-8 rounded-md px-2.5 text-sm cursor-pointer">
                 <Clock className="w-4 h-4" />
                 <span>Recent</span>
               </TabsTrigger>
-              <TabsTrigger value="starred" className="h-8 rounded-md px-2.5 text-sm">
+              <TabsTrigger value="starred" className="h-8 rounded-md px-2.5 text-sm cursor-pointer">
                 <Star className="w-4 h-4" />
                 <span>Starred</span>
               </TabsTrigger>
@@ -339,10 +340,10 @@ export function AppSidebar() {
             <SidebarMenuButton
               className="h-9 rounded-md px-3 text-sm font-normal hover:bg-muted/70"
               render={
-                <a href="/settings">
+                <Link to="/settings">
                   <Settings className="w-4 h-4" />
                   <span>Settings</span>
-                </a>
+                </Link>
               }
             />
           </SidebarMenuItem>

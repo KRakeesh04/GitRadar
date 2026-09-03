@@ -4,4 +4,5 @@ pub mod commits;
 pub mod contributors;
 pub mod files;
 pub mod repos;
+pub mod search;
 pub mod sync;

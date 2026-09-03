@@ -5,5 +5,6 @@ pub mod contributor_service;
 pub mod file_service;
 pub mod repository_discovery_service;
 pub mod repository_query_service;
+pub mod search_index_service;
 pub mod sync_service;
 pub mod tracked_root_service;

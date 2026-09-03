@@ -104,3 +104,16 @@ pub fn get_paginated_repositories(
         DomainError::InvalidRepository(format!("Failed to query paginated repositories: {e}"))
     })
 }
+
+/// Search repositories via the FTS5 index (fast, ranked MATCH over name/path/remote_url).
+pub fn search_repositories(
+    conn: &Connection,
+    query: &str,
+    filter: Option<&str>,
+    limit: usize,
+    cursor: Option<i64>,
+) -> DomainResult<PaginatedRepositories> {
+    repositories::search_repositories(conn, query, filter, limit, cursor).map_err(|e| {
+        DomainError::InvalidRepository(format!("Failed to FTS search repositories: {e}"))
+    })
+}

@@ -352,12 +352,121 @@ pub fn get_paginated_repositories(
     })
 }
 
+/// Search repositories using the FTS5 index (fast MATCH against name/path/remote_url),
+/// ranked by relevance, then paginated with the same cursor scheme as get_paginated_repositories.
+pub fn search_repositories(
+    conn: &Connection,
+    query: &str,
+    filter: Option<&str>,
+    limit: usize,
+    cursor: Option<i64>,
+) -> Result<PaginatedRepositories> {
+    let trimmed = query.trim();
+    if trimmed.is_empty() {
+        return get_paginated_repositories(conn, Some(""), filter, limit, cursor);
+    }
+
+    // Build an FTS5 MATCH expression: each token becomes a prefix match (`tok*`),
+    // combined with implicit AND. Keeps the expression non-empty and valid for MATCH.
+    let match_expr = trimmed
+        .split_whitespace()
+        .map(|tok| format!("{}*", tok.replace('"', "\"\"")))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let mut where_clause: String = "repo_search MATCH ?1".to_string();
+
+    if let Some(f) = filter {
+        let filter_clause = match f.to_lowercase().as_str() {
+            "clean" => Some("s.is_dirty = 0"),
+            "modified" => Some("s.is_dirty = 1"),
+            "unhealthy" => Some("s.health_score < 0.7"),
+            "enabled" => Some("s.is_enabled = 1"),
+            "disabled" => Some("s.is_enabled = 0"),
+            "starred" => Some("s.is_starred = 1"),
+            _ => None,
+        };
+        if let Some(fc) = filter_clause {
+            where_clause.push_str(" AND ");
+            where_clause.push_str(fc);
+        }
+    }
+
+    let where_sql = format!("WHERE {where_clause}");
+
+    // FTS5 may return rows without content for terms outside the index; joining
+    // to repository_summary guarantees we only return real repositories and lets
+    // us reuse the full summary projection + cursor pagination.
+    let columns = "s.id, s.name, s.path, s.git_dir_path, s.repo_type, s.is_enabled, s.is_starred, s.starred_at, s.health_score, s.default_branch, s.head_branch,
+            s.remote_url, s.is_dirty, s.last_commit_hash, s.last_commit_at, s.last_scanned_at, s.last_indexed_at, s.index_status,
+            s.created_at, s.updated_at, s.total_commits, s.weekly_commits, s.unique_contributors";
+
+    // Count total matches (no cursor applied)
+    let count_sql = format!(
+        "SELECT COUNT(*) FROM repo_search JOIN repository_summary s ON s.id = repo_search.rowid {where_sql}"
+    );
+    let total_count: usize =
+        conn.query_row(&count_sql, params![match_expr], |row| row.get(0))?;
+
+    // Cursor pagination on id (consistent with the rest of the app)
+    let (sql, params): (String, Vec<Box<dyn rusqlite::ToSql>>) = if let Some(c) = cursor {
+        (
+            format!(
+                "SELECT {columns} FROM repo_search
+                 JOIN repository_summary s ON s.id = repo_search.rowid
+                 {where_sql} AND s.id < ?2
+                 ORDER BY s.id DESC
+                 LIMIT ?3"
+            ),
+            vec![Box::new(match_expr), Box::new(c), Box::new((limit + 1) as i64)],
+        )
+    } else {
+        (
+            format!(
+                "SELECT {columns} FROM repo_search
+                 JOIN repository_summary s ON s.id = repo_search.rowid
+                 {where_sql}
+                 ORDER BY s.id DESC
+                 LIMIT ?2"
+            ),
+            vec![Box::new(match_expr), Box::new((limit + 1) as i64)],
+        )
+    };
+
+    let params_slice: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    let mut stmt = conn.prepare(&sql)?;
+    let repos_iter =
+        stmt.query_map(rusqlite::params_from_iter(params_slice), row_to_repository_summary)?;
+    let mut items: Vec<RepositorySummary> = repos_iter.filter_map(Result::ok).collect();
+
+    let has_more = items.len() > limit;
+    if has_more {
+        items.truncate(limit);
+    }
+
+    let next_cursor = if has_more {
+        items.last().map(|r| r.id)
+    } else {
+        None
+    };
+
+    for r in &mut items {
+        r.root_ids = get_root_ids_for_repository(conn, r.id).unwrap_or_default();
+    }
+
+    Ok(PaginatedRepositories {
+        items,
+        next_cursor,
+        has_more,
+        total_count,
+    })
+}
+
 pub fn get_repository_metrics(
     conn: &Connection,
     repo_id: i64,
     week_ago: &str,
-) -> Result<RepositoryMetrics> {
-    conn.query_row(
+) -> Result<RepositoryMetrics> {    conn.query_row(
         r#"
         SELECT
             (SELECT COUNT(*) FROM commits WHERE repo_id = ?1),
@@ -680,6 +789,83 @@ mod tests {
         let search_result = get_paginated_repositories(&conn, Some("repo3"), None, 10, None).unwrap();
         assert_eq!(search_result.items.len(), 1);
         assert_eq!(search_result.items[0].name, "repo3");
+    }
+
+    #[test]
+    fn test_fts_search_repositories() {
+        let conn = setup_test_db();
+        let root_id = tracked_roots::insert_tracked_root(&conn, "/home/user/projects", true).unwrap();
+
+        for i in 1..=5 {
+            let path = format!("/home/user/projects/repo{}", i);
+            let name = format!("repo{}", i);
+            let repo_id = upsert_repository(
+                &conn,
+                &name,
+                &path,
+                &format!("{}/.git", path),
+                "standard",
+                None,
+                Some("main"),
+                Some("main"),
+            )
+            .unwrap();
+            link_repository_to_root(&conn, root_id, repo_id).unwrap();
+        }
+
+        // Exact-ish match
+        let res = search_repositories(&conn, "repo3", None, 10, None).unwrap();
+        assert_eq!(res.items.len(), 1);
+        assert_eq!(res.items[0].name, "repo3");
+        assert_eq!(res.total_count, 1);
+
+        // Prefix token match (repo matches repo1..repo5)
+        let res = search_repositories(&conn, "repo", None, 10, None).unwrap();
+        assert_eq!(res.items.len(), 5);
+        assert_eq!(res.total_count, 5);
+
+        // No match
+        let res = search_repositories(&conn, "doesnotexist", None, 10, None).unwrap();
+        assert_eq!(res.items.len(), 0);
+        assert_eq!(res.total_count, 0);
+
+        // Empty query falls back to the normal paginated path
+        let res = search_repositories(&conn, "   ", None, 3, None).unwrap();
+        assert_eq!(res.items.len(), 3);
+        assert!(res.has_more);
+
+        // Cursor pagination within FTS results
+        let page1 = search_repositories(&conn, "repo", None, 2, None).unwrap();
+        assert_eq!(page1.items.len(), 2);
+        assert!(page1.has_more);
+        let page2 = search_repositories(&conn, "repo", None, 2, page1.next_cursor).unwrap();
+        assert_eq!(page2.items.len(), 2);
+        assert!(page2.has_more);
+
+        // Update (rename) keeps the index in sync via triggers. "repo3" now only
+        // matches via the unchanged path segment, while the new name is indexed.
+        upsert_repository(
+            &conn,
+            "renamed",
+            "/home/user/projects/repo3",
+            "/home/user/projects/repo3/.git",
+            "standard",
+            None,
+            Some("main"),
+            Some("main"),
+        )
+        .unwrap();
+
+        let res = search_repositories(&conn, "renamed", None, 10, None).unwrap();
+        assert_eq!(res.items.len(), 1);
+        let res = search_repositories(&conn, "repo3", None, 10, None).unwrap();
+        assert_eq!(res.items[0].name, "renamed"); // matched via the path
+
+        // Deleting the repository removes it from the index.
+        conn.execute("DELETE FROM repositories WHERE id = ?1", params![res.items[0].id])
+            .unwrap();
+        let res = search_repositories(&conn, "renamed", None, 10, None).unwrap();
+        assert_eq!(res.items.len(), 0);
     }
 }
 

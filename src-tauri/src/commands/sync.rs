@@ -55,8 +55,8 @@ pub async fn sync_repository(
                 repo_id,
                 job_id,
                 progress: 100,
-                processed_items: 9,
-                total_items: 9,
+                processed_items: 10,
+                total_items: 10,
                 status: "completed".to_owned(),
             },
         );

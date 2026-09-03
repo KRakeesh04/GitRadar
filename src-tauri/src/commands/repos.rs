@@ -189,6 +189,71 @@ pub fn set_repository_enabled(
     repositories::set_repository_enabled(&mut conn, repo_id, enabled).map_err(|e| e.to_string())
 }
 
+/// FTS5-backed repository search. Runs on a blocking thread so it never stalls
+/// Tauri's event loop, then returns the same paginated shape as the list query.
+#[tauri::command]
+pub async fn search_repositories(
+    query: String,
+    filter: Option<String>,
+    limit: Option<usize>,
+    cursor: Option<i64>,
+    state: State<'_, AppState>,
+) -> Result<PaginatedRepositoriesResponse, String> {
+    let db_path = state.db_path.clone();
+    tauri::async_runtime::spawn_blocking(move || -> Result<PaginatedRepositoriesResponse, String> {
+        let conn = get_connection(&db_path).map_err(|e| e.to_string())?;
+        let page_limit = limit.unwrap_or(20);
+        let result = repository_query_service::search_repositories(
+            &conn,
+            &query,
+            filter.as_deref(),
+            page_limit,
+            cursor,
+        )
+        .map_err(|e| e.to_string())?;
+
+        let items = result
+            .items
+            .into_iter()
+            .map(|r| RepositoryResponse {
+                id: r.id,
+                root_ids: r.root_ids.clone(),
+                root_id: r.root_ids.first().copied(),
+                is_enabled: r.is_enabled,
+                is_starred: r.is_starred,
+                starred_at: r.starred_at,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+                name: r.name,
+                path: r.path,
+                git_dir: r.git_dir_path,
+                health_score: r.health_score.unwrap_or(0.0),
+                activity_level: format!(
+                    "{:?}",
+                    crate::domain::ActivityLevel::from_weekly_commits(
+                        r.weekly_commits.unwrap_or(0) as u32
+                    )
+                ),
+                default_branch: r.default_branch,
+                head_branch: r.head_branch,
+                remote_url: r.remote_url,
+                is_dirty: r.is_dirty,
+                total_commits: r.total_commits.unwrap_or(0) as u32,
+                unique_contributors: r.unique_contributors.unwrap_or(0) as u32,
+            })
+            .collect();
+
+        Ok(PaginatedRepositoriesResponse {
+            items,
+            next_cursor: result.next_cursor,
+            has_more: result.has_more,
+            total_count: result.total_count,
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub fn discover_repositories(state: State<'_, AppState>) -> Result<(), String> {
     let mut conn = get_connection(&state.db_path).map_err(|e| e.to_string())?;

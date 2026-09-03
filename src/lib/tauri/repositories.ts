@@ -1,4 +1,4 @@
-import { tauri } from "./tauri";
+import { tauri } from './tauri';
 
 export interface RepositoryInfo {
   id: number;
@@ -64,7 +64,7 @@ function toRepositoryInfo(repository: RepositoryInfoResponse): RepositoryInfo {
   return {
     id: repository.id,
     rootIds: repository.root_ids ?? (repository.root_id != null ? [repository.root_id] : []),
-    rootId: repository.root_id ?? (repository.root_ids?.[0] ?? null),
+    rootId: repository.root_id ?? repository.root_ids?.[0] ?? null,
     isEnabled: repository.is_enabled,
     isStarred: repository.is_starred,
     starredAt: repository.starred_at,
@@ -146,7 +146,9 @@ export async function getRepositories(): Promise<RepositoryInfo[]> {
 }
 
 export async function getRepositoriesByRootId(rootId: number): Promise<RepositoryInfo[]> {
-  const repositories = await tauri<RepositoryInfoResponse[]>('get_repositories_by_root_id', { rootId });
+  const repositories = await tauri<RepositoryInfoResponse[]>('get_repositories_by_root_id', {
+    rootId,
+  });
   return repositories.map(toRepositoryInfo);
 }
 
@@ -171,6 +173,25 @@ export async function getPaginatedRepositories(params: {
   };
 }
 
+export function searchRepositories(params: {
+  query: string;
+  filter?: string;
+  limit?: number;
+  cursor?: number | null;
+}): Promise<PaginatedRepositories> {
+  return tauri<PaginatedRepositoriesResponse>('search_repositories', {
+    query: params.query,
+    filter: params.filter ?? null,
+    limit: params.limit ?? 20,
+    cursor: params.cursor ?? null,
+  }).then(response => ({
+    items: response.items.map(toRepositoryInfo),
+    nextCursor: response.next_cursor,
+    hasMore: response.has_more,
+    totalCount: response.total_count,
+  }));
+}
+
 export function setRepositoryEnabled(repoId: number, enabled: boolean): Promise<boolean> {
   return tauri<boolean>('set_repository_enabled', { repoId, enabled });
 }
@@ -180,15 +201,21 @@ export function setRepositoryStarred(repoId: number, isStarred: boolean): Promis
 }
 
 export function getStarredRepositories(limit?: number, offset?: number): Promise<RepositoryInfo[]> {
-  return tauri<RepositoryInfoResponse[]>('get_starred_repositories', { limit, offset }).then(repos => repos.map(toRepositoryInfo));
+  return tauri<RepositoryInfoResponse[]>('get_starred_repositories', { limit, offset }).then(
+    repos => repos.map(toRepositoryInfo)
+  );
 }
 
 export function getRecentRepositories(limit?: number, offset?: number): Promise<RepositoryInfo[]> {
-  return tauri<RepositoryInfoResponse[]>('get_recent_repositories', { limit, offset }).then(repos => repos.map(toRepositoryInfo));
+  return tauri<RepositoryInfoResponse[]>('get_recent_repositories', { limit, offset }).then(repos =>
+    repos.map(toRepositoryInfo)
+  );
 }
 
 export async function getRepositoryInfoById(id: number): Promise<RepositoryInfo | null> {
-  const repositoryInfo = await tauri<RepositoryInfoResponse | null>('get_repository_info', { repoId: id });
+  const repositoryInfo = await tauri<RepositoryInfoResponse | null>('get_repository_info', {
+    repoId: id,
+  });
   return repositoryInfo ? toRepositoryInfo(repositoryInfo) : null;
 }
 
@@ -197,7 +224,13 @@ export async function getBranchesByRepoId(repoId: number): Promise<Branch[]> {
   return branches.map(toBranch);
 }
 
-export async function getBranchByRepoIdAndName(repoId: number, branchName: string): Promise<Branch | null> {
-  const branch = await tauri<BranchResponse | null>('get_branch_info', { repoId, name: branchName });
+export async function getBranchByRepoIdAndName(
+  repoId: number,
+  branchName: string
+): Promise<Branch | null> {
+  const branch = await tauri<BranchResponse | null>('get_branch_info', {
+    repoId,
+    name: branchName,
+  });
   return branch ? toBranch(branch) : null;
 }

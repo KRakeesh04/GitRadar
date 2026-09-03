@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router';
 import {
   ArrowLeft,
@@ -17,7 +17,11 @@ import { Button } from '#/components/ui/button';
 import { Card, CardContent, CardHeader } from '#/components/ui/card';
 import { Separator } from '#/components/ui/separator';
 import { Skeleton } from '#/components/ui/skeleton';
-import { usePaginatedRepositories, useRepositories } from '#/hooks/useRepositories';
+import {
+  usePaginatedRepositories,
+  useRepositories,
+  useSearchedRepositories,
+} from '#/hooks/useRepositories';
 import type { RepositoryInfo } from '#/lib/tauri/repositories';
 
 export const Route = createFileRoute('/repository')({
@@ -51,15 +55,35 @@ function RouteComponent() {
 
   const pathname = useRouterState({ select: state => state.location.pathname });
 
+  // Debounce the raw input so we don't fire an FTS query on every keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(searchQuery), 250);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
+
   // Total summary counts
   const allReposQuery = useRepositories();
 
+  const trimmedSearch = debouncedSearch.trim();
+  const isSearching = trimmedSearch.length > 0;
+
   const paginatedQuery = usePaginatedRepositories({
-    search: searchQuery,
+    search: isSearching ? trimmedSearch : '',
+    filter: currentFilterOption?.apiKey,
+    limit: 12,
+    cursor: currentCursor,
+    enabled: !isSearching,
+  });
+
+  const searchedQuery = useSearchedRepositories({
+    query: trimmedSearch,
     filter: currentFilterOption?.apiKey,
     limit: 12,
     cursor: currentCursor,
   });
+
+  const activeQuery = isSearching ? searchedQuery : paginatedQuery;
 
   if (pathname.replace(/\/$/, '') !== '/repository') {
     return <Outlet />;
@@ -75,8 +99,8 @@ function RouteComponent() {
   const disabledCount = allRepos.filter(repo => !repo.isEnabled).length;
 
   const handleNextPage = () => {
-    const nextCursor = paginatedQuery.data?.nextCursor;
-    const hasMore = paginatedQuery.data?.hasMore;
+    const nextCursor = activeQuery.data?.nextCursor;
+    const hasMore = activeQuery.data?.hasMore;
     if (nextCursor == null || !hasMore) return;
     setPageIndex(prevIndex => {
       setCursorHistory(prevHistory =>
@@ -104,7 +128,7 @@ function RouteComponent() {
     setPageIndex(0);
   };
 
-  const repoItems = paginatedQuery.data?.items ?? [];
+  const repoItems = activeQuery.data?.items ?? [];
 
   return (
     <div className="flex h-full w-full flex-col gap-3 overflow-y-auto px-[clamp(0.5rem,2vw,2.5rem)] py-5">
@@ -120,6 +144,7 @@ function RouteComponent() {
         <SearchBar
           placeholder="Search repositories by name or path..."
           className="min-w-60 max-w-md"
+          mode="plain"
           value={searchQuery}
           onChange={handleSearchChange}
         />
@@ -145,7 +170,7 @@ function RouteComponent() {
         </div>
       </div>
 
-      {paginatedQuery.isLoading ? (
+      {activeQuery.isLoading ? (
         <div className="my-4 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {[1, 2, 3, 4, 5, 6].map(item => (
             <Skeleton key={item} className="h-44 w-full rounded-xl" />
@@ -274,7 +299,7 @@ function RouteComponent() {
       {/* Pagination Controls */}
       <div className="mt-auto flex items-center justify-between border-t border-border pt-4 pb-2">
         <div className="text-xs text-muted-foreground">
-          Showing page {pageIndex + 1} · Total {paginatedQuery.data?.totalCount ?? allRepos.length}{' '}
+          Showing page {pageIndex + 1} · Total {activeQuery.data?.totalCount ?? allRepos.length}{' '}
           results
         </div>
         <div className="flex items-center gap-2">
@@ -282,7 +307,7 @@ function RouteComponent() {
             variant="outline"
             size="sm"
             onClick={handlePrevPage}
-            disabled={pageIndex === 0 || paginatedQuery.isLoading}
+            disabled={pageIndex === 0 || activeQuery.isLoading}
             className="cursor-pointer"
           >
             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Previous
@@ -291,7 +316,7 @@ function RouteComponent() {
             variant="outline"
             size="sm"
             onClick={handleNextPage}
-            disabled={!paginatedQuery.data?.hasMore || paginatedQuery.isLoading}
+            disabled={!activeQuery.data?.hasMore || activeQuery.isLoading}
             className="cursor-pointer"
           >
             Next <ArrowRight className="ml-1 h-3.5 w-3.5" />
