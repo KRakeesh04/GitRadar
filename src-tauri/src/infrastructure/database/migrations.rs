@@ -394,14 +394,24 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         );
 
         ------------------------------------------------------------
-        -- SEARCH (FTS5)
+        -- SEARCH (FTS5) — cross-entity searchable text index
         ------------------------------------------------------------
-
+        -- Stores searchable text produced during repository sync for multiple
+        -- entity kinds (commit / contributor / file / branch), keyed by repo.
+        -- NOTE: FTS5 virtual tables don't support ON CONFLICT, so sync rebuilds
+        -- each repo's entries with a DELETE-then-INSERT pattern. The rowid is a
+        -- monotonically increasing counter (auto-assigned on INSERT).
+        -- DROP is intentional: search_index was unused dead schema; recreating it
+        -- with the correct columns ensures a consistent definition on every start.
+        DROP TABLE IF EXISTS search_index;
         CREATE VIRTUAL TABLE IF NOT EXISTS search_index
         USING fts5(
             repo_id UNINDEXED,
-            entity_type,
-            searchable_text
+            entity_type UNINDEXED,
+            entity_id UNINDEXED,
+            title,
+            body,
+            tokenize = 'unicode61 remove_diacritics 2'
         );
         "#,
     )?;
@@ -559,6 +569,43 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             FROM commits
             GROUP BY repo_id
         ) c ON c.repo_id = r.id;
+        "#,
+    )?;
+
+    // Dedicated FTS5 search index for repositories.
+    // Only identity data needed for searching is stored (name/path/remote_url).
+    // rowid == repositories.id so deletes/updates are trivial via triggers.
+    conn.execute_batch(
+        r#"
+        CREATE VIRTUAL TABLE IF NOT EXISTS repo_search USING fts5(
+            name,
+            path,
+            remote_url,
+            repo_id UNINDEXED,
+            tokenize = 'unicode61 remove_diacritics 2'
+        );
+
+        CREATE TRIGGER IF NOT EXISTS repo_search_ai AFTER INSERT ON repositories BEGIN
+            INSERT INTO repo_search(rowid, repo_id, name, path, remote_url)
+            VALUES (new.id, new.id, new.name, new.path, COALESCE(new.remote_url, ''));
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS repo_search_ad AFTER DELETE ON repositories BEGIN
+            DELETE FROM repo_search WHERE rowid = old.id;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS repo_search_au AFTER UPDATE ON repositories BEGIN
+            DELETE FROM repo_search WHERE rowid = old.id;
+            INSERT INTO repo_search(rowid, repo_id, name, path, remote_url)
+            VALUES (new.id, new.id, new.name, new.path, COALESCE(new.remote_url, ''));
+        END;
+
+        -- Backfill any repositories that predate this migration (guards against
+        -- the legacy table-recreate path and duplicate inserts). FTS5 virtual
+        -- tables don't support ON CONFLICT, so use a NOT EXISTS guard instead.
+        INSERT INTO repo_search(rowid, repo_id, name, path, remote_url)
+        SELECT id, id, name, path, COALESCE(remote_url, '') FROM repositories
+        WHERE id NOT IN (SELECT rowid FROM repo_search);
         "#,
     )?;
 

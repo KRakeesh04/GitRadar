@@ -9,6 +9,7 @@ pub mod indexing_jobs;
 pub mod repositories;
 pub mod repository_files;
 pub mod repository_health;
+pub mod search_index;
 pub mod settings;
 pub mod tracked_roots;
 pub mod working_tree;
