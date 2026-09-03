@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router';
 import {
   ArrowLeft,
@@ -8,6 +8,7 @@ import {
   GitBranch,
   GitCommit,
   Power,
+  Star,
   Users,
 } from 'lucide-react';
 
@@ -16,10 +17,8 @@ import { Button } from '#/components/ui/button';
 import { Card, CardContent, CardHeader } from '#/components/ui/card';
 import { Separator } from '#/components/ui/separator';
 import { Skeleton } from '#/components/ui/skeleton';
-import {
-  usePaginatedRepositories,
-  useRepositories,
-} from '#/hooks/useRepositories';
+import { usePaginatedRepositories, useRepositories } from '#/hooks/useRepositories';
+import type { RepositoryInfo } from '#/lib/tauri/repositories';
 
 export const Route = createFileRoute('/repository')({
   component: RouteComponent,
@@ -66,7 +65,11 @@ function RouteComponent() {
     return <Outlet />;
   }
 
-  const allRepos = allReposQuery.data ?? [];
+  const allRepos = useMemo(() => {
+    const seen = new Map<number, RepositoryInfo>();
+    for (const repo of allReposQuery.data ?? []) seen.set(repo.id, repo);
+    return [...seen.values()];
+  }, [allReposQuery.data]);
   const cleanCount = allRepos.filter(repo => !repo.isDirty).length;
   const modifiedCount = allRepos.filter(repo => repo.isDirty).length;
   const disabledCount = allRepos.filter(repo => !repo.isEnabled).length;
@@ -171,21 +174,26 @@ function RouteComponent() {
               >
                 <Card
                   className={`h-full transition-all duration-200 hover:border-(--brand) hover:shadow-md ${
-                    isRepoDisabled
-                      ? 'border-dashed bg-muted/30 opacity-75 grayscale-30'
-                      : 'bg-card'
+                    isRepoDisabled ? 'border-dashed bg-muted/30 opacity-75 grayscale-30' : 'bg-card'
                   }`}
                 >
                   <CardHeader className="p-4 pb-2">
                     <div className="min-w-0">
-                      <span
-                        className={`truncate text-base font-semibold block ${
-                          isRepoDisabled ? 'text-muted-foreground line-through decoration-muted-foreground/50' : 'text-foreground'
-                        }`}
-                        title={repo.name}
-                      >
-                        {repo.name}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`truncate text-base font-semibold ${
+                            isRepoDisabled
+                              ? 'text-muted-foreground line-through decoration-muted-foreground/50'
+                              : 'text-foreground'
+                          }`}
+                          title={repo.name}
+                        >
+                          {repo.name}
+                        </span>
+                        {repo.isStarred && (
+                          <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
+                        )}
+                      </div>
                       <p
                         className="truncate font-mono text-xs text-muted-foreground"
                         title={repo.path}
@@ -248,7 +256,9 @@ function RouteComponent() {
                         {repo.uniqueContributors}
                       </span>
                       <span className="flex items-center gap-1" title="Status">
-                        <Power className={`h-3 w-3 ${repo.isEnabled ? 'text-emerald-500' : 'text-zinc-400'}`} />
+                        <Power
+                          className={`h-3 w-3 ${repo.isEnabled ? 'text-emerald-500' : 'text-zinc-400'}`}
+                        />
                         {repo.isEnabled ? 'Active' : 'Paused'}
                       </span>
                     </div>
@@ -263,7 +273,8 @@ function RouteComponent() {
       {/* Pagination Controls */}
       <div className="mt-auto flex items-center justify-between border-t border-border pt-4 pb-2">
         <div className="text-xs text-muted-foreground">
-          Showing page {pageIndex + 1} · Total {paginatedQuery.data?.totalCount ?? allRepos.length} results
+          Showing page {pageIndex + 1} · Total {paginatedQuery.data?.totalCount ?? allRepos.length}{' '}
+          results
         </div>
         <div className="flex items-center gap-2">
           <Button

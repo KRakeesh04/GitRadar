@@ -1,7 +1,7 @@
-import { Clock, FileText, GitBranch, GitCommit, Mail, Users, X } from "lucide-react";
+import { Clock, FileText, GitBranch, GitCommit, Mail, Star, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn } from "#/lib/utils";
-import { useContributors, useRepositoryById, useRepositoryLanguagesStats } from "#/hooks/useRepositories";
+import { useContributors, useRepositoryById, useRepositoryLanguagesStats, useToggleRepositoryStarred } from "#/hooks/useRepositories";
 import { useRepoFiles } from "#/hooks/useFiles";
 import { useCommits } from "#/hooks/useCommits";
 import type { Contributor, LanguageStatsResponse } from "#/lib/tauri/analytics";
@@ -149,6 +149,14 @@ export function RepositoryMetadataBar({ repoId }: { repoId: string }) {
   const [showAllContributors, setShowAllContributors] = useState(false);
   const visibleContributors = sortedContributors.length > 4 ? sortedContributors.slice(0, 3) : sortedContributors;
 
+  const toggleStarred = useToggleRepositoryStarred();
+  const isStarred = repoInfo?.isStarred ?? false;
+
+  const handleToggleStarred = () => {
+    if (!repoInfo) return;
+    toggleStarred.mutate({ repoId: repoInfo.id, isStarred: !isStarred });
+  };
+
   return (
     <div className="mx-10 flex flex-wrap items-center gap-10">
       <div className="flex min-w-[18rem] flex-1 flex-col items-start gap-2">
@@ -157,6 +165,20 @@ export function RepositoryMetadataBar({ repoId }: { repoId: string }) {
           <span className={`rounded-full px-2 py-0.5 text-xs ${repoInfo?.isDirty ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
             {repoInfo?.isDirty ? "Dirty" : "Clean"}
           </span>
+          <button
+            onClick={handleToggleStarred}
+            disabled={toggleStarred.isPending}
+            className={cn(
+              "ml-2 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-medium transition-colors cursor-pointer",
+              isStarred
+                ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300 dark:hover:bg-amber-900"
+                : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+              toggleStarred.isPending && "opacity-50"
+            )}
+          >
+            <Star className={cn("h-4 w-4", isStarred && "fill-amber-400 text-amber-400")} />
+            <span>{isStarred ? "Starred" : "Star"}</span>
+          </button>
         </div>
         <span className="max-w-full truncate text-sm text-muted-foreground" title={repoInfo?.path ?? ""}>
           {repoInfo?.path || "Repository path unavailable"}
