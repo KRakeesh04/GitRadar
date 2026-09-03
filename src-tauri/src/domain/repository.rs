@@ -17,6 +17,8 @@ pub struct Repository {
 
     // Business State
     pub is_enabled: bool,
+    pub is_starred: bool,
+    pub starred_at: Option<String>,
     pub health_score: HealthScore,
     pub activity_level: ActivityLevel,
 
@@ -53,6 +55,8 @@ impl Repository {
             path,
             git_dir,
             is_enabled: true,
+            is_starred: false,
+            starred_at: None,
             health_score: HealthScore::new(0.5).unwrap(), // Default: Fair
             activity_level: ActivityLevel::VeryLow,
             default_branch,

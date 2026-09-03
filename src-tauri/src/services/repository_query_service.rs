@@ -24,6 +24,8 @@ fn summary_to_domain(repo: RepositorySummary) -> Repository {
         path: PathBuf::from(repo.path),
         git_dir: PathBuf::from(repo.git_dir_path),
         is_enabled: repo.is_enabled,
+        is_starred: repo.is_starred,
+        starred_at: repo.starred_at,
         health_score: HealthScore::new(repo.health_score.unwrap_or(0.0))
             .unwrap_or_else(|_| HealthScore::new(0.0).unwrap()),
         activity_level: ActivityLevel::from_weekly_commits(repo.weekly_commits.unwrap_or(0) as u32),

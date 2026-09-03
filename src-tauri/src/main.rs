@@ -47,6 +47,9 @@ fn main() {
             commands::repos::get_all_tracked_root_paths,
             commands::repos::set_tracked_root_enabled,
             commands::repos::delete_tracked_root_path,
+            commands::repos::set_repository_starred,
+            commands::repos::get_starred_repositories,
+            commands::repos::get_recent_repositories,
             // Branch commands
             commands::branches::get_repository_branches,
             commands::branches::get_branch_info,
