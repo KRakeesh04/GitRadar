@@ -163,28 +163,30 @@ fn row_to_repository_summary(row: &rusqlite::Row) -> Result<RepositorySummary> {
         git_dir_path: row.get(3)?,
         repo_type: row.get(4)?,
         is_enabled: row.get(5)?,
-        health_score: row.get(6)?,
-        default_branch: row.get(7)?,
-        head_branch: row.get(8)?,
-        remote_url: row.get(9)?,
-        is_dirty: row.get(10)?,
-        last_commit_hash: row.get(11)?,
-        last_commit_at: row.get(12)?,
-        last_scanned_at: row.get(13)?,
-        last_indexed_at: row.get(14)?,
-        index_status: row.get(15)?,
-        created_at: row.get(16)?,
-        updated_at: row.get(17)?,
-        total_commits: row.get(18)?,
-        weekly_commits: row.get(19)?,
-        unique_contributors: row.get(20)?,
+        is_starred: row.get(6)?,
+        starred_at: row.get(7)?,
+        health_score: row.get(8)?,
+        default_branch: row.get(9)?,
+        head_branch: row.get(10)?,
+        remote_url: row.get(11)?,
+        is_dirty: row.get(12)?,
+        last_commit_hash: row.get(13)?,
+        last_commit_at: row.get(14)?,
+        last_scanned_at: row.get(15)?,
+        last_indexed_at: row.get(16)?,
+        index_status: row.get(17)?,
+        created_at: row.get(18)?,
+        updated_at: row.get(19)?,
+        total_commits: row.get(20)?,
+        weekly_commits: row.get(21)?,
+        unique_contributors: row.get(22)?,
         root_ids: Vec::new(),
     })
 }
 
 pub fn get_repository_by_id(conn: &Connection, id: i64) -> Result<Option<RepositorySummary>> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, health_score, default_branch, head_branch,
+        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, is_starred, starred_at, health_score, default_branch, head_branch,
                 remote_url, is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
                 created_at, updated_at, total_commits, weekly_commits, unique_contributors
          FROM repository_summary WHERE id = ?1",
@@ -205,7 +207,7 @@ pub fn get_all_repositories(
     offset: usize,
 ) -> Result<Option<Vec<RepositorySummary>>> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, health_score, default_branch, head_branch,
+        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, is_starred, starred_at, health_score, default_branch, head_branch,
                 remote_url, is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
                 created_at, updated_at, total_commits, weekly_commits, unique_contributors
          FROM repository_summary ORDER BY updated_at DESC LIMIT ?1 OFFSET ?2",
@@ -227,7 +229,7 @@ pub fn get_repositories_by_root_id(
 ) -> Result<Vec<RepositorySummary>> {
     // When retrieving for a specific root, we use the root-specific created_at from repository_roots
     let mut stmt = conn.prepare(
-        "SELECT r.id, r.name, r.path, r.git_dir_path, r.repo_type, r.is_enabled, r.health_score, r.default_branch, r.head_branch,
+        "SELECT r.id, r.name, r.path, r.git_dir_path, r.repo_type, r.is_enabled, r.is_starred, r.starred_at, r.health_score, r.default_branch, r.head_branch,
                 r.remote_url, r.is_dirty, r.last_commit_hash, r.last_commit_at, r.last_scanned_at, r.last_indexed_at, r.index_status, 
                 rr.created_at, r.updated_at, r.total_commits, r.weekly_commits, r.unique_contributors
          FROM repository_roots rr
@@ -278,6 +280,7 @@ pub fn get_paginated_repositories(
             "unhealthy" => where_clauses.push("health_score < 0.7".to_string()),
             "enabled" => where_clauses.push("is_enabled = 1".to_string()),
             "disabled" => where_clauses.push("is_enabled = 0".to_string()),
+            "starred" => where_clauses.push("is_starred = 1".to_string()),
             _ => {}
         }
     }
@@ -312,7 +315,7 @@ pub fn get_paginated_repositories(
     let limit_idx = param_values.len();
 
     let sql = format!(
-        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, health_score, default_branch, head_branch,
+        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, is_starred, starred_at, health_score, default_branch, head_branch,
                 remote_url, is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
                 created_at, updated_at, total_commits, weekly_commits, unique_contributors
          FROM repository_summary
@@ -476,6 +479,69 @@ pub fn get_activity_summary(
     })?;
 
     Ok(result)
+}
+
+pub fn set_repository_starred(conn: &Connection, repo_id: i64, is_starred: bool) -> Result<bool> {
+    let now = chrono::Utc::now().to_rfc3339();
+    let rows = conn.execute(
+        r#"
+        UPDATE repositories
+        SET is_starred = ?1, starred_at = ?2, updated_at = ?3
+        WHERE id = ?4
+        "#,
+        params![is_starred, if is_starred { Some(now.as_str()) } else { None }, now, repo_id],
+    )?;
+    Ok(rows > 0)
+}
+
+pub fn get_starred_repositories(
+    conn: &Connection,
+    limit: usize,
+    offset: usize,
+) -> Result<Vec<RepositorySummary>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, is_starred, starred_at, health_score, default_branch, head_branch,
+                remote_url, is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
+                created_at, updated_at, total_commits, weekly_commits, unique_contributors
+         FROM repository_summary 
+         WHERE is_starred = 1
+         ORDER BY starred_at DESC
+         LIMIT ?1 OFFSET ?2",
+    )?;
+
+    let repos_iter = stmt.query_map([limit, offset], row_to_repository_summary)?;
+    let mut repos: Vec<RepositorySummary> = repos_iter.filter_map(Result::ok).collect();
+
+    for r in &mut repos {
+        r.root_ids = get_root_ids_for_repository(conn, r.id).unwrap_or_default();
+    }
+
+    Ok(repos)
+}
+
+pub fn get_recent_repositories(
+    conn: &Connection,
+    limit: usize,
+    offset: usize,
+) -> Result<Vec<RepositorySummary>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, is_starred, starred_at, health_score, default_branch, head_branch,
+                remote_url, is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
+                created_at, updated_at, total_commits, weekly_commits, unique_contributors
+         FROM repository_summary 
+         WHERE last_commit_at IS NOT NULL
+         ORDER BY last_commit_at DESC
+         LIMIT ?1 OFFSET ?2",
+    )?;
+
+    let repos_iter = stmt.query_map([limit, offset], row_to_repository_summary)?;
+    let mut repos: Vec<RepositorySummary> = repos_iter.filter_map(Result::ok).collect();
+
+    for r in &mut repos {
+        r.root_ids = get_root_ids_for_repository(conn, r.id).unwrap_or_default();
+    }
+
+    Ok(repos)
 }
 
 pub fn get_repository_path(conn: &Connection, repo_id: i64) -> Result<Option<String>> {

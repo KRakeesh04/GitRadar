@@ -35,6 +35,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             git_dir_path        TEXT NOT NULL,
             repo_type           TEXT NOT NULL DEFAULT 'standard',
             is_enabled          INTEGER NOT NULL DEFAULT 1,
+            is_starred          INTEGER NOT NULL DEFAULT 0,
+            starred_at          TEXT,
             remote_url          TEXT,
             default_branch      TEXT,
             head_branch         TEXT,
@@ -431,6 +433,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
                 git_dir_path        TEXT NOT NULL,
                 repo_type           TEXT NOT NULL DEFAULT 'standard',
                 is_enabled          INTEGER NOT NULL DEFAULT 1,
+                is_starred          INTEGER NOT NULL DEFAULT 0,
+                starred_at          TEXT,
                 remote_url          TEXT,
                 default_branch      TEXT,
                 head_branch         TEXT,
@@ -446,13 +450,13 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
 
             INSERT INTO repositories_dg_tmp (
                 id, name, path, git_dir_path, repo_type,
-                is_enabled, remote_url, default_branch, head_branch,
+                is_enabled, is_starred, starred_at, remote_url, default_branch, head_branch,
                 is_dirty, last_commit_hash, last_commit_at, last_scanned_at,
                 last_indexed_at, index_status, created_at, updated_at
             )
             SELECT 
                 id, name, path, git_dir_path, repo_type,
-                1, remote_url, default_branch, head_branch,
+                1, 0, NULL, remote_url, default_branch, head_branch,
                 is_dirty, last_commit_hash, last_commit_at, last_scanned_at,
                 last_indexed_at, index_status, created_at, updated_at
             FROM repositories;
@@ -473,6 +477,43 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         );
     }
 
+    // Add starred columns if they don't exist
+    let mut stmt = conn.prepare("PRAGMA table_info(repositories)")?;
+    let current_columns = stmt
+        .query_map([], |row| row.get::<_, String>(1))?
+        .filter_map(Result::ok)
+        .collect::<Vec<String>>();
+
+    let added_starred = if !current_columns.iter().any(|c| c == "is_starred") {
+        let result = conn.execute(
+            "ALTER TABLE repositories ADD COLUMN is_starred INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
+        result.is_ok()
+    } else {
+        true
+    };
+
+    let added_starred_at = if !current_columns.iter().any(|c| c == "starred_at") {
+        let result = conn.execute(
+            "ALTER TABLE repositories ADD COLUMN starred_at TEXT",
+            [],
+        );
+        result.is_ok()
+    } else {
+        true
+    };
+
+    // Add index for starred repositories if it doesn't exist
+    // Only create index if columns exist
+    if (current_columns.iter().any(|c| c == "is_starred") || added_starred) 
+        && (current_columns.iter().any(|c| c == "starred_at") || added_starred_at) {
+        let _ = conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_repositories_starred ON repositories(is_starred, starred_at DESC)",
+            [],
+        );
+    }
+
     // Ensure indexes and views referencing new columns are created
     conn.execute_batch(
         r#"
@@ -489,6 +530,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             r.git_dir_path,
             r.repo_type,
             r.is_enabled,
+            r.is_starred,
+            r.starred_at,
             h.health_score,
             r.default_branch,
             r.head_branch,

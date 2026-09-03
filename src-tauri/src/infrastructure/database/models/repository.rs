@@ -37,6 +37,8 @@ pub struct RepositorySummary {
     pub git_dir_path: String,
     pub repo_type: String,
     pub is_enabled: bool,
+    pub is_starred: bool,
+    pub starred_at: Option<String>,
     pub remote_url: Option<String>,
     pub default_branch: Option<String>,
     pub head_branch: Option<String>,
