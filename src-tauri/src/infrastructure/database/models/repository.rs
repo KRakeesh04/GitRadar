@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Repository {
     pub id: i64,
-    pub root_id: i64,
     pub name: String,
     pub path: String,
     pub git_dir_path: String,
     pub repo_type: String,
+    pub is_enabled: bool,
     pub remote_url: Option<String>,
     pub default_branch: Option<String>,
     pub head_branch: Option<String>,
@@ -21,14 +21,24 @@ pub struct Repository {
     pub updated_at: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RepositorySummary {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RepositoryRoot {
     pub id: i64,
     pub root_id: i64,
+    pub repo_id: i64,
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RepositorySummary {
+    pub id: i64,
     pub name: String,
     pub path: String,
     pub git_dir_path: String,
     pub repo_type: String,
+    pub is_enabled: bool,
+    pub is_starred: bool,
+    pub starred_at: Option<String>,
     pub remote_url: Option<String>,
     pub default_branch: Option<String>,
     pub head_branch: Option<String>,
@@ -44,4 +54,7 @@ pub struct RepositorySummary {
     pub total_commits: Option<i64>,
     pub weekly_commits: Option<i64>,
     pub unique_contributors: Option<i64>,
+    #[serde(default)]
+    pub root_ids: Vec<i64>,
 }
+

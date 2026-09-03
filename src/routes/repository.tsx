@@ -1,243 +1,303 @@
+import { useMemo, useState } from 'react';
+import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Clock,
+  Filter,
+  GitBranch,
+  GitCommit,
+  Power,
+  Star,
+  Users,
+} from 'lucide-react';
+
 import { SearchBar } from '#/components/searchbar';
 import { Button } from '#/components/ui/button';
 import { Card, CardContent, CardHeader } from '#/components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '#/components/ui/dropdown-menu';
 import { Separator } from '#/components/ui/separator';
-import { useCommits } from '#/hooks/useCommits';
-import { useRepoFiles } from '#/hooks/useFiles';
-import { useRepositories, useRepositoryLanguagesStats } from '#/hooks/useRepositories';
-import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router'
-import { ArrowUpNarrowWide, ChevronsUpDown, Clock, FileText, Filter, GitBranch, GitCommit, Users } from 'lucide-react';
-import { useState } from 'react';
+import { Skeleton } from '#/components/ui/skeleton';
+import { usePaginatedRepositories, useRepositories } from '#/hooks/useRepositories';
+import type { RepositoryInfo } from '#/lib/tauri/repositories';
 
 export const Route = createFileRoute('/repository')({
   component: RouteComponent,
-})
+});
 
-enum RepositorySearchFilter {
+enum RepositoryFilter {
   All = 'All',
   Clean = 'Clean',
-  Dirty = 'Dirty',
+  Dirty = 'Modified',
+  Enabled = 'Enabled',
+  Disabled = 'Disabled',
 }
 
-const searchFilterOptions = [
-  { label: RepositorySearchFilter.All, value: RepositorySearchFilter.All },
-  { label: RepositorySearchFilter.Clean, value: RepositorySearchFilter.Clean },
-  { label: RepositorySearchFilter.Dirty, value: RepositorySearchFilter.Dirty },
+const filterOptions = [
+  { label: RepositoryFilter.All, value: RepositoryFilter.All, apiKey: undefined },
+  { label: RepositoryFilter.Clean, value: RepositoryFilter.Clean, apiKey: 'clean' },
+  { label: RepositoryFilter.Dirty, value: RepositoryFilter.Dirty, apiKey: 'modified' },
+  { label: RepositoryFilter.Enabled, value: RepositoryFilter.Enabled, apiKey: 'enabled' },
+  { label: RepositoryFilter.Disabled, value: RepositoryFilter.Disabled, apiKey: 'disabled' },
 ];
-
-enum RepositoryDropdownFilter {
-  RecentlyAccessed = 'Recently accessed',
-  Name = 'Name',
-  MostCommits = 'Most commits',
-}
-const DropdownFilterOptions = [
-  { label: RepositoryDropdownFilter.RecentlyAccessed, value: RepositoryDropdownFilter.RecentlyAccessed },
-  { label: RepositoryDropdownFilter.Name, value: RepositoryDropdownFilter.Name },
-  { label: RepositoryDropdownFilter.MostCommits, value: RepositoryDropdownFilter.MostCommits },
-];
-
-// const repoList = [
-//   {
-//     name: 'Repo 1',
-//     description: 'This is the description for Repo 1.',
-//     path: 'there/is/something/in/this/path/to/repo1',
-//     status: 'Clean',
-//     branch: 'main',
-//     lastCommit: '2023-08-01',
-//     totalCommits: 10,
-//     fileCount: 100,
-//     contributors: 2
-//   },
-//   {
-//     name: 'Repo 2',
-//     description: 'This is the description for Rep/path/to/repo1o 2.',
-//     path: '/path/to/repo2',
-//     status: 'Dirty',
-//     branch: 'develop',
-//     lastCommit: '2023-08-02',
-//     totalCommits: 15,
-//     fileCount: 150,
-//     contributors: 3
-//   },
-//   {
-//     name: 'Repo 3',
-//     description: 'This is the description for Repo 3.',
-//     path: '/path/to/repo1',
-//     status: 'Clean',
-//     branch: 'main',
-//     lastCommit: '2023-08-01',
-//     totalCommits: 10,
-//     fileCount: 100,
-//     contributors: 2
-//   },
-//   {
-//     name: 'Repo 4',
-//     description: 'This is the description for Repo 4.',
-//     path: '/path/to/repo1',
-//     status: 'Dirty',
-//     branch: 'develop',
-//     lastCommit: '2023-08-02',
-//     totalCommits: 15,
-//     fileCount: 150,
-//     contributors: 3
-//   },
-//   {
-//     name: 'Repo 5',
-//     description: 'This is the description for Repo 5.',
-//     path: '/path/to/repo1',
-//     status: 'Clean',
-//     branch: 'main',
-//     lastCommit: '2023-08-01',
-//     totalCommits: 10,
-//     fileCount: 100,
-//     contributors: 2
-//   },
-//   {
-//     name: 'Repo 6',
-//     description: 'This is the description for Repo 6.',
-//     path: '/path/to/repo1',
-//     status: 'Clean',
-//     branch: 'develop',
-//     lastCommit: '2023-08-02',
-//     totalCommits: 15,
-//     fileCount: 150,
-//     contributors: 3
-//   },
-//   {
-//     name: 'Repo 7',
-//     description: 'This is the description for Repo 7.',
-//     path: '/path/to/repo1',
-//     status: 'Clean',
-//     branch: 'main',
-//     lastCommit: '2023-08-01',
-//     totalCommits: 10,
-//     fileCount: 100,
-//     contributors: 2
-//   },
-//   {
-//     name: 'Repo 8',
-//     description: 'This is the description for Repo 8.',
-//     path: '/path/to/repo1',
-//     status: 'Clean',
-//     branch: 'develop',
-//     lastCommit: '2023-08-02',
-//     totalCommits: 15,
-//     fileCount: 150,
-//     contributors: 3
-//   }
-// ]
 
 function RouteComponent() {
-  const [filter, setFilter] = useState<RepositorySearchFilter>(RepositorySearchFilter.All);
-  const [activeDropdownFilter, setActiveDropdownFilter] = useState<RepositoryDropdownFilter>(RepositoryDropdownFilter.RecentlyAccessed);
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const [filter, setFilter] = useState<RepositoryFilter>(RepositoryFilter.All);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [cursorHistory, setCursorHistory] = useState<(number | null)[]>([null]);
+  const [pageIndex, setPageIndex] = useState(0);
+
+  const currentCursor = cursorHistory[pageIndex] ?? null;
+  const currentFilterOption = filterOptions.find(opt => opt.value === filter);
+
+  const pathname = useRouterState({ select: state => state.location.pathname });
+
+  // Total summary counts
+  const allReposQuery = useRepositories();
+
+  const paginatedQuery = usePaginatedRepositories({
+    search: searchQuery,
+    filter: currentFilterOption?.apiKey,
+    limit: 12,
+    cursor: currentCursor,
+  });
 
   if (pathname.replace(/\/$/, '') !== '/repository') {
-    return <Outlet />
+    return <Outlet />;
   }
 
-  const repoList = useRepositories().data ?? [];
-  const handleLastCommitDate = (repoId: number) => {
-    return useCommits(repoId, 1, 0).data?.[0]?.committedAt ?? 'N/A';
+  const allRepos = useMemo(() => {
+    const seen = new Map<number, RepositoryInfo>();
+    for (const repo of allReposQuery.data ?? []) seen.set(repo.id, repo);
+    return [...seen.values()];
+  }, [allReposQuery.data]);
+  const cleanCount = allRepos.filter(repo => !repo.isDirty).length;
+  const modifiedCount = allRepos.filter(repo => repo.isDirty).length;
+  const disabledCount = allRepos.filter(repo => !repo.isEnabled).length;
+
+  const handleNextPage = () => {
+    const nextCursor = paginatedQuery.data?.nextCursor;
+    const hasMore = paginatedQuery.data?.hasMore;
+    if (nextCursor == null || !hasMore) return;
+    setPageIndex(prevIndex => {
+      setCursorHistory(prevHistory =>
+        prevIndex + 1 < prevHistory.length ? prevHistory : [...prevHistory, nextCursor]
+      );
+      return prevIndex + 1;
+    });
   };
-  const handleFileCount = (repoId: number) => {
-    const files = useRepoFiles(repoId).data?.length ?? 0;
-    return files;
-  }
-  const handleTopLangUsage = (repoId: number) => {
-    const repoLanguagesStats = useRepositoryLanguagesStats(repoId).data;
-    const languagesDetails = repoLanguagesStats?.languages.map(lang => ({
-      name: lang.language,
-      percentage: ((lang.bytes / repoLanguagesStats.total_bytes) * 100).toFixed(2),
-    })).sort((a, b) => Number(b.percentage) - Number(a.percentage)) ?? [];
-    return languagesDetails?.[0]?.name ?? 'N/A';
-  }
+
+  const handlePrevPage = () => {
+    if (pageIndex > 0) {
+      setPageIndex(pageIndex - 1);
+    }
+  };
+
+  const handleFilterChange = (newFilter: RepositoryFilter) => {
+    setFilter(newFilter);
+    setCursorHistory([null]);
+    setPageIndex(0);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setCursorHistory([null]);
+    setPageIndex(0);
+  };
+
+  const repoItems = paginatedQuery.data?.items ?? [];
 
   return (
-    <div className="flex flex-col gap-2 scroll-auto px-[clamp(0.5rem,2vw,2.5rem)] py-5 overflow-y-auto">
-      <span className="text-2xl font-medium">Repositories</span>
-      <span className='text-muted-foreground'>{repoList.length} repositories tracked · {repoList.filter((repo) => repo.isDirty).length} with uncommitted changes</span>
-      <div className="flex mt-4 lg:mt-5">
-        <div className="flex items-center gap-3 ">
-          <SearchBar placeholder="Filter repositories..." className='w-[clamp(10rem,20vw,15rem)]' />
-          <Filter className="w-3 h-3 text-muted-foreground" />
-          {searchFilterOptions.map((option) => (
-            <Button
-              key={option.value}
-              variant='outline'
-              className={`cursor-pointer border border-input ${filter === option.value ? 'text-foreground' : 'text-muted-foreground bg-background'}`}
-              onClick={() => setFilter(option.value)}
-            >
-              <span>{option.label}</span>
-            </Button>
-          ))}
-        </div>
-        <div className="flex gap-2 ml-auto items-center">
-          <ArrowUpNarrowWide className="w-3 h-3 text-muted-foreground" />
-          <div className="flex-1 items-left w-42">
-            <DropdownMenu>
-              <DropdownMenuTrigger render={
-                <Button
-                  variant="outline"
-                  className={'w-full text-left cursor-pointer'}
-                >
-                  <span>{activeDropdownFilter}</span>
-                  <ChevronsUpDown className="ml-auto h-4 w-4 opacity-50" />
-                </Button>
-              } />
-              <DropdownMenuContent>
-                {DropdownFilterOptions.map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    onClick={() => setActiveDropdownFilter(option.value)}
-                    className={`cursor-pointer ${activeDropdownFilter === option.value ? 'bg-(--brand-low) focus:bg-(--brand-low)' : 'focus:bg-muted '}`}
-                  >
-                    {option.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+    <div className="flex h-full w-full flex-col gap-3 overflow-y-auto px-[clamp(0.5rem,2vw,2.5rem)] py-5">
+      <div className="flex flex-col gap-1">
+        <span className="text-2xl font-medium">Repositories</span>
+        <span className="text-sm text-muted-foreground">
+          {allRepos.length} repositories tracked · {modifiedCount} with uncommitted changes ·{' '}
+          {cleanCount} clean · {disabledCount} disabled
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <SearchBar
+          placeholder="Search repositories by name or path..."
+          className="min-w-60 max-w-md"
+          value={searchQuery}
+          onChange={handleSearchChange}
+        />
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap gap-1">
+            {filterOptions.map(option => (
+              <Button
+                key={option.value}
+                variant={filter === option.value ? 'default' : 'outline'}
+                size="sm"
+                className={`cursor-pointer ${
+                  filter === option.value
+                    ? 'bg-(--brand) text-white hover:bg-(--brand-hover)'
+                    : 'text-muted-foreground'
+                }`}
+                onClick={() => handleFilterChange(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
           </div>
         </div>
       </div>
-      <div className="flex flex-wrap justify-center gap-6 my-4 lg:my-5 py-5 place-items-center w-full overflow-y-auto">
-        {/* Repository list content */}
-        {repoList.map((repo) => (
-          <Link
-            key={repo.id}
-            to='/repository/$id'
-            params={{ id: String(repo.id) }}
-            className="block"
+
+      {paginatedQuery.isLoading ? (
+        <div className="my-4 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[1, 2, 3, 4, 5, 6].map(item => (
+            <Skeleton key={item} className="h-44 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : repoItems.length === 0 ? (
+        <div className="my-12 flex flex-col items-center justify-center rounded-xl border border-dashed border-border p-12 text-center">
+          <GitBranch className="h-10 w-10 text-muted-foreground" />
+          <h3 className="mt-3 text-lg font-medium">No repositories found</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {searchQuery
+              ? `No repositories match "${searchQuery}" with the selected filter.`
+              : 'Add tracked folders in Root Paths to discover repositories.'}
+          </p>
+        </div>
+      ) : (
+        <div className="my-4 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {repoItems.map(repo => {
+            const isRepoDisabled = !repo.isEnabled;
+
+            return (
+              <Link
+                key={repo.id}
+                to="/repository/$id"
+                params={{ id: String(repo.id) }}
+                className="group block"
+              >
+                <Card
+                  className={`h-full transition-all duration-200 hover:border-(--brand) hover:shadow-md ${
+                    isRepoDisabled ? 'border-dashed bg-muted/30 opacity-75 grayscale-30' : 'bg-card'
+                  }`}
+                >
+                  <CardHeader className="p-4 pb-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`truncate text-base font-semibold ${
+                            isRepoDisabled
+                              ? 'text-muted-foreground line-through decoration-muted-foreground/50'
+                              : 'text-foreground'
+                          }`}
+                          title={repo.name}
+                        >
+                          {repo.name}
+                        </span>
+                        {repo.isStarred && (
+                          <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
+                        )}
+                      </div>
+                      <p
+                        className="truncate font-mono text-xs text-muted-foreground"
+                        title={repo.path}
+                      >
+                        {repo.path}
+                      </p>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
+                          isRepoDisabled
+                            ? 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                            : !repo.isDirty
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            isRepoDisabled
+                              ? 'bg-zinc-400'
+                              : !repo.isDirty
+                                ? 'bg-emerald-500'
+                                : 'bg-amber-500'
+                          }`}
+                        />
+                        {isRepoDisabled ? 'Disabled' : !repo.isDirty ? 'Clean' : 'Modified'}
+                      </span>
+
+                      {repo.healthScore > 0 ? (
+                        <span className="rounded-md border border-border px-1.5 py-0.5 text-muted-foreground">
+                          Health: {(repo.healthScore * 100).toFixed(0)}%
+                        </span>
+                      ) : null}
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="p-4 pt-2">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1 truncate">
+                        <GitBranch className="h-3.5 w-3.5" />
+                        {repo.headBranch ?? 'Detached'}
+                      </span>
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Clock className="h-3.5 w-3.5" />
+                        {repo.updatedAt ? new Date(repo.updatedAt).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
+
+                    <Separator className="my-2.5" />
+
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1" title="Commits">
+                        <GitCommit className="h-3.5 w-3.5" />
+                        {repo.totalCommits}
+                      </span>
+                      <span className="flex items-center gap-1" title="Contributors">
+                        <Users className="h-3.5 w-3.5" />
+                        {repo.uniqueContributors}
+                      </span>
+                      <span className="flex items-center gap-1" title="Status">
+                        <Power
+                          className={`h-3 w-3 ${repo.isEnabled ? 'text-emerald-500' : 'text-zinc-400'}`}
+                        />
+                        {repo.isEnabled ? 'Active' : 'Paused'}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      <div className="mt-auto flex items-center justify-between border-t border-border pt-4 pb-2">
+        <div className="text-xs text-muted-foreground">
+          Showing page {pageIndex + 1} · Total {paginatedQuery.data?.totalCount ?? allRepos.length}{' '}
+          results
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrevPage}
+            disabled={pageIndex === 0 || paginatedQuery.isLoading}
+            className="cursor-pointer"
           >
-            <Card className="p-4 mb-2 w-90 lg:w-100 xl:w-120 w-clump(20rem, 30vw, 25rem) transition-transform duration-300 hover:border hover:border-(--brand) hover:shadow-lg cursor-pointer">
-              <CardHeader className="flex flex-col gap-1">
-                <div className="flex items-center gap-2 w-full">
-                  <span className="text-lg font-semibold">{repo.name}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${!repo.isDirty ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {!repo.isDirty ? 'Clean' : 'Dirty'}
-                  </span>
-                  <span className='ml-auto border border-input px-2 py-1 rounded-md bg-muted'>{handleTopLangUsage(repo.id)}</span>
-                </div>
-                {/* <span className="text-sm text-muted-foreground">{repo.description}</span> */}
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-5 mt-2 text-sm text-foreground">
-                  <span className='flex items-center'><GitBranch className="w-4 h-4 mr-2" />{repo.headBranch}</span>
-                  <span className='flex items-center'><Clock className="w-4 h-4 mr-2" />{handleLastCommitDate(repo.id)}</span>
-                </div>
-                <Separator orientation="horizontal" className="my-2" />
-                <div className="flex flex-wrap gap-5 mt-2 text-sm text-muted-foreground">
-                  <span className='flex items-center'><GitCommit className="w-4 h-4 mr-2" />{repo.totalCommits}</span>
-                  <span className='flex items-center'><FileText className="w-4 h-4 mr-2" />{handleFileCount(repo.id)}</span>
-                  <span className='flex items-center'><Users className="w-4 h-4 mr-2" />{repo.uniqueContributors}</span>
-                  <span className='ml-auto'>{repo.path.length > 20 ? `...${repo.path.substring(repo.path.length - 20)}` : repo.path}</span>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNextPage}
+            disabled={!paginatedQuery.data?.hasMore || paginatedQuery.isLoading}
+            className="cursor-pointer"
+          >
+            Next <ArrowRight className="ml-1 h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
-    </div >
+    </div>
   );
 }

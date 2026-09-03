@@ -48,9 +48,8 @@ pub fn discover_repositories(conn: &mut Connection) -> Result<(), String> {
             }
         };
 
-        repositories::upsert_repository(
+        let repo_id = repositories::upsert_repository(
             &tx,
-            root_id,
             &repo.name,
             repo_path,
             repo.git_dir.to_str().unwrap_or(""),
@@ -60,6 +59,9 @@ pub fn discover_repositories(conn: &mut Connection) -> Result<(), String> {
             head_branch.as_deref(),
         )
         .map_err(|e| e.to_string())?;
+
+        repositories::link_repository_to_root(&tx, root_id, repo_id)
+            .map_err(|e| e.to_string())?;
     }
 
     tx.commit().map_err(|e| e.to_string())?;

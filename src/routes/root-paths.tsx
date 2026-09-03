@@ -26,9 +26,9 @@ import {
   useToggleTrackedRoot,
   useTrackedRoots,
 } from '#/hooks/useTrackedRoots';
+import { useToggleRepositoryEnabled, useRepositories } from '#/hooks/useRepositories';
 import type { TrackedRoot } from '#/lib/tauri/tracked-roots';
 import type { Repository } from '#/lib/tauri/repositories';
-import { useRepositories } from '#/hooks/useRepositories';
 import { useSyncRepositories } from '#/hooks/useSync';
 import { AddRootPathPopover } from '#/components/root-paths/add-root-path';
 import { DeleteRootPathDialog } from '#/components/root-paths/delete-root-path';
@@ -54,6 +54,7 @@ function RouteComponent() {
   const deleteMutation = useDeleteTrackedRoot();
   const [expandedPathId, setExpandedPathId] = useState<number | null>(null);
   const [isAddPopoverOpen, setIsAddPopoverOpen] = useState(false);
+  const [isAddingRoot, setIsAddingRoot] = useState(false);
   const [rootToDelete, setRootToDelete] = useState<RootPath | null>(null);
   const [syncingRootId, setSyncingRootId] = useState<number | null>(null);
 
@@ -63,7 +64,9 @@ function RouteComponent() {
         ...root,
         name: getPathLabel(root.path),
         updatedLabel: formatUpdatedAt(root.updatedAt),
-        repos: (repositoriesQuery.data ?? []).filter(repo => repo.rootId === root.id),
+        repos: (repositoriesQuery.data ?? []).filter(
+          repo => repo.rootIds?.includes(root.id) || repo.rootId === root.id
+        ),
       })),
     [repositoriesQuery.data, rootsQuery.data]
   );
@@ -75,15 +78,30 @@ function RouteComponent() {
     return () => window.removeEventListener(OPEN_ADD_ROOT_PATH_EVENT, openPopover);
   }, []);
 
-  const allRepos = rootPaths.flatMap(root => root.repos);
+  // A repo can be linked to multiple root paths (1-to-n). Dedupe by repo.id so
+  // global stats count each repository exactly once.
+  const allRepos = useMemo(() => {
+    const seen = new Map<number, RootRepository>();
+    for (const root of rootPaths) {
+      for (const repo of root.repos) {
+        seen.set(repo.id, repo);
+      }
+    }
+    return [...seen.values()];
+  }, [rootPaths]);
   const cleanCount = allRepos.filter(repo => !repo.isDirty).length;
   const modifiedCount = allRepos.filter(repo => repo.isDirty).length;
 
   const addRootPath = async (path: string) => {
-    await addMutation.mutateAsync(path);
-    await rescanMutation.mutateAsync();
-    setIsAddPopoverOpen(false);
-    toast.success('Root path added');
+    setIsAddingRoot(true);
+    try {
+      await addMutation.mutateAsync(path);
+      await rescanMutation.mutateAsync();
+      setIsAddPopoverOpen(false);
+      toast.success('Root path added');
+    } finally {
+      setIsAddingRoot(false);
+    }
   };
 
   const deleteRootPath = () => {
@@ -98,14 +116,28 @@ function RouteComponent() {
   };
 
   const syncRootPath = (rootPath: RootPath) => {
-    if (syncMutation.isPending || rootPath.repos.length === 0) return;
+    if (!rootPath.enabled) {
+      toast.error('Root path is disabled. Enable it to sync repositories.');
+      return;
+    }
+
+    const syncableRepos = rootPath.repos.filter(repo => repo.isEnabled);
+    if (syncMutation.isPending || syncableRepos.length === 0) {
+      if (rootPath.repos.length > 0 && syncableRepos.length === 0) {
+        toast.info('All repositories in this root path are disabled from syncing');
+      }
+      return;
+    }
 
     setSyncingRootId(rootPath.id);
-    syncMutation.mutate(rootPath.repos.map(repo => repo.id), {
-      onSuccess: () => toast.success(`${rootPath.name} repositories synced`),
-      onError: error => toast.error(getErrorMessage(error)),
-      onSettled: () => setSyncingRootId(null),
-    });
+    syncMutation.mutate(
+      syncableRepos.map(repo => repo.id),
+      {
+        onSuccess: () => toast.success(`${rootPath.name} repositories synced`),
+        onError: error => toast.error(getErrorMessage(error)),
+        onSettled: () => setSyncingRootId(null),
+      }
+    );
   };
 
   return (
@@ -178,7 +210,7 @@ function RouteComponent() {
         open={isAddPopoverOpen}
         onOpenChange={setIsAddPopoverOpen}
         onAdd={addRootPath}
-        isSaving={addMutation.isPending}
+        isSaving={isAddingRoot || addMutation.isPending || rescanMutation.isPending}
       />
       <DeleteRootPathDialog
         rootPath={rootToDelete}
@@ -190,7 +222,6 @@ function RouteComponent() {
   );
 }
 
-
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex w-full flex-col items-center gap-1 rounded-md border border-border p-4">
@@ -199,7 +230,6 @@ function Stat({ value, label }: { value: number; label: string }) {
     </div>
   );
 }
-
 
 function RootPathCard({
   rootPath,
@@ -224,6 +254,7 @@ function RootPathCard({
 }) {
   const cleanCount = rootPath.repos.filter(repo => !repo.isDirty).length;
   const modifiedCount = rootPath.repos.filter(repo => repo.isDirty).length;
+  const toggleRepoMutation = useToggleRepositoryEnabled();
 
   return (
     <Collapsible open={isExpanded}>
@@ -250,14 +281,20 @@ function RootPathCard({
                   size="icon-sm"
                   aria-label={`Refresh ${rootPath.name}`}
                   onClick={onRescan}
-                  disabled={isRescanning || isSyncing || rootPath.repos.length === 0}
+                  className="cursor-pointer"
+                  disabled={
+                    isRescanning || isSyncing || rootPath.repos.length === 0 || !rootPath.enabled
+                  }
                 >
-                  <RefreshCw className={isRescanning || isSyncing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+                  <RefreshCw
+                    className={isRescanning || isSyncing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'}
+                  />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon-sm"
                   aria-label={`Delete ${rootPath.name}`}
+                  className="cursor-pointer"
                   onClick={onDelete}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -287,7 +324,7 @@ function RootPathCard({
               render={
                 <button
                   type="button"
-                  className="flex w-full items-center border-t px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/50"
+                  className="flex w-full items-center border-t px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/50 cursor-pointer"
                   onClick={onToggle}
                 >
                   <span>{rootPath.repos.length} repositories</span>
@@ -303,7 +340,22 @@ function RootPathCard({
               <CollapsibleContent>
                 <div className="border-t px-3 py-2">
                   {rootPath.repos.map(repo => (
-                    <RepositoryRow key={repo.id} repo={repo} />
+                    <RepositoryRow
+                      key={repo.id}
+                      repo={repo}
+                      onToggleEnabled={enabled =>
+                        toggleRepoMutation.mutate(
+                          { repoId: repo.id, enabled },
+                          {
+                            onSuccess: () =>
+                              toast.success(
+                                `${repo.name} is now ${enabled ? 'enabled' : 'disabled'}`
+                              ),
+                            onError: error => toast.error(getErrorMessage(error)),
+                          }
+                        )
+                      }
+                    />
                   ))}
                 </div>
               </CollapsibleContent>
@@ -324,22 +376,41 @@ function RootPathCard({
   );
 }
 
+function RepositoryRow({
+  repo,
+  onToggleEnabled,
+}: {
+  repo: RootRepository;
+  onToggleEnabled: (enabled: boolean) => void;
+}) {
+  const isRepoDisabled = !repo.isEnabled;
 
-function RepositoryRow({ repo }: { repo: RootRepository }) {
   return (
-    <Link
-      to="/repository/$id"
-      params={{ id: String(repo.id) }}
-      className="flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted"
-    >
+    <div className="flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted">
       <span
         className={
-          !repo.isDirty
-            ? 'h-2 w-2 shrink-0 rounded-full bg-emerald-500'
-            : 'h-2 w-2 shrink-0 rounded-full bg-amber-500'
+          isRepoDisabled
+            ? 'h-2 w-2 shrink-0 rounded-full bg-zinc-400'
+            : !repo.isDirty
+              ? 'h-2 w-2 shrink-0 rounded-full bg-emerald-500'
+              : 'h-2 w-2 shrink-0 rounded-full bg-amber-500'
         }
+        title={isRepoDisabled ? 'Sync disabled' : !repo.isDirty ? 'Clean' : 'Modified'}
       />
-      <span className="min-w-0 flex-1 truncate font-medium">{repo.name}</span>
+      <Link
+        to="/repository/$id"
+        params={{ id: String(repo.id) }}
+        className={`min-w-0 flex-1 truncate font-medium`}
+      >
+        <span className={`${isRepoDisabled ? 'text-muted-foreground line-through' : ''}`}>
+          {repo.name}
+        </span>
+        {isRepoDisabled ? (
+          <span className="ml-3 rounded-sm bg-zinc-200 px-1.5 py-0.5 text-[10px] font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+            Disabled
+          </span>
+        ) : null}
+      </Link>
       <span className="hidden items-center gap-1 text-muted-foreground sm:flex">
         <GitBranch className="h-3.5 w-3.5" />
         {repo.headBranch ?? 'Detached'}
@@ -347,11 +418,18 @@ function RepositoryRow({ repo }: { repo: RootRepository }) {
       <span className="hidden w-24 text-right text-xs text-muted-foreground sm:block">
         {formatUpdatedAt(repo.updatedAt)}
       </span>
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-    </Link>
+      <Switch
+        checked={repo.isEnabled}
+        onChange={e => onToggleEnabled(e.currentTarget.checked)}
+        aria-label={`Toggle sync for ${repo.name}`}
+        title={repo.isEnabled ? 'Sync enabled' : 'Sync disabled'}
+      />
+      <Link to="/repository/$id" params={{ id: String(repo.id) }} className="shrink-0">
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </Link>
+    </div>
   );
 }
-
 
 function LoadingCards() {
   return (

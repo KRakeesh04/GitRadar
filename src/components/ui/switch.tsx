@@ -1,7 +1,17 @@
 import * as React from 'react';
 import { cn } from '#/lib/utils';
 
-export function Switch({ className, ...props }: React.ComponentProps<'input'>) {
+export function Switch({ className, onChange, onClick, ...props }: React.ComponentProps<'input'>) {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    if (onChange) onChange(e);
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    if (onClick) onClick(e);
+  };
+
   return (
     <input
       type="checkbox"
@@ -12,6 +22,8 @@ export function Switch({ className, ...props }: React.ComponentProps<'input'>) {
         'checked:bg-primary checked:before:translate-x-4 disabled:cursor-not-allowed disabled:opacity-50',
         className
       )}
+      onChange={handleChange}
+      onClick={handleClick}
       {...props}
     />
   );

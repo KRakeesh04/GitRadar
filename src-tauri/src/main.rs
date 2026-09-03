@@ -39,11 +39,17 @@ fn main() {
             // Repository commands
             commands::repos::get_repository_info,
             commands::repos::get_all_repositories,
+            commands::repos::get_repositories_by_root_id,
+            commands::repos::get_paginated_repositories,
+            commands::repos::set_repository_enabled,
             commands::repos::discover_repositories,
             commands::repos::add_tracked_root_path,
             commands::repos::get_all_tracked_root_paths,
             commands::repos::set_tracked_root_enabled,
             commands::repos::delete_tracked_root_path,
+            commands::repos::set_repository_starred,
+            commands::repos::get_starred_repositories,
+            commands::repos::get_recent_repositories,
             // Branch commands
             commands::branches::get_repository_branches,
             commands::branches::get_branch_info,

@@ -10,7 +10,6 @@ pub struct RepositoryMetrics {
 
 pub fn upsert_repository(
     conn: &Connection,
-    root_id: i64,
     name: &str,
     path: &str,
     git_dir_path: &str,
@@ -18,13 +17,12 @@ pub fn upsert_repository(
     remote_url: Option<&str>,
     default_branch: Option<&str>,
     head_branch: Option<&str>,
-) -> Result<()> {
+) -> Result<i64> {
     let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
         r#"
         INSERT INTO repositories (
-            root_id,
             name,
             path,
             git_dir_path,
@@ -37,12 +35,10 @@ pub fn upsert_repository(
         )
         VALUES (
             ?1, ?2, ?3, ?4, ?5,
-            ?6, ?7, ?8, ?9, ?10
+            ?6, ?7, ?8, ?9
         )
-
         ON CONFLICT(path)
         DO UPDATE SET
-            root_id = excluded.root_id,
             name = excluded.name,
             git_dir_path = excluded.git_dir_path,
             repo_type = excluded.repo_type,
@@ -52,7 +48,6 @@ pub fn upsert_repository(
             updated_at = excluded.updated_at
         "#,
         params![
-            root_id,
             name,
             path,
             git_dir_path,
@@ -65,7 +60,70 @@ pub fn upsert_repository(
         ],
     )?;
 
+    // Retrieve the repo_id (whether inserted or existing)
+    let repo_id: i64 = conn.query_row(
+        "SELECT id FROM repositories WHERE path = ?1",
+        params![path],
+        |row| row.get(0),
+    )?;
+
+    Ok(repo_id)
+}
+
+pub fn link_repository_to_root(conn: &Connection, root_id: i64, repo_id: i64) -> Result<()> {
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        r#"
+        INSERT INTO repository_roots (root_id, repo_id, created_at)
+        VALUES (?1, ?2, ?3)
+        ON CONFLICT(root_id, repo_id) DO NOTHING
+        "#,
+        params![root_id, repo_id, now],
+    )?;
     Ok(())
+}
+
+pub fn set_repository_enabled(conn: &Connection, repo_id: i64, is_enabled: bool) -> Result<bool> {
+    let now = chrono::Utc::now().to_rfc3339();
+    let rows = conn.execute(
+        r#"
+        UPDATE repositories
+        SET is_enabled = ?1, updated_at = ?2
+        WHERE id = ?3
+        "#,
+        params![is_enabled, now, repo_id],
+    )?;
+    Ok(rows > 0)
+}
+
+pub fn is_repository_enabled_for_sync(conn: &Connection, repo_id: i64) -> Result<bool> {
+    // A repo is eligible for sync if it is enabled AND at least one of its tracked roots is enabled
+    let result: Option<bool> = conn.query_row(
+        r#"
+        SELECT (r.is_enabled = 1 AND EXISTS (
+            SELECT 1 FROM repository_roots rr
+            JOIN tracked_roots tr ON tr.id = rr.root_id
+            WHERE rr.repo_id = r.id AND tr.is_enabled = 1
+        ))
+        FROM repositories r
+        WHERE r.id = ?1
+        "#,
+        params![repo_id],
+        |row| row.get(0),
+    ).ok();
+
+    Ok(result.unwrap_or(false))
+}
+
+pub fn get_root_ids_for_repository(conn: &Connection, repo_id: i64) -> Result<Vec<i64>> {
+    let mut stmt = conn.prepare(
+        "SELECT root_id FROM repository_roots WHERE repo_id = ?1 ORDER BY root_id ASC",
+    )?;
+    let root_ids = stmt
+        .query_map(params![repo_id], |row| row.get(0))?
+        .filter_map(Result::ok)
+        .collect();
+    Ok(root_ids)
 }
 
 pub fn update_repository_sync_state(
@@ -97,42 +155,50 @@ pub fn update_repository_sync_state(
     Ok(())
 }
 
+fn row_to_repository_summary(row: &rusqlite::Row) -> Result<RepositorySummary> {
+    Ok(RepositorySummary {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        path: row.get(2)?,
+        git_dir_path: row.get(3)?,
+        repo_type: row.get(4)?,
+        is_enabled: row.get(5)?,
+        is_starred: row.get(6)?,
+        starred_at: row.get(7)?,
+        health_score: row.get(8)?,
+        default_branch: row.get(9)?,
+        head_branch: row.get(10)?,
+        remote_url: row.get(11)?,
+        is_dirty: row.get(12)?,
+        last_commit_hash: row.get(13)?,
+        last_commit_at: row.get(14)?,
+        last_scanned_at: row.get(15)?,
+        last_indexed_at: row.get(16)?,
+        index_status: row.get(17)?,
+        created_at: row.get(18)?,
+        updated_at: row.get(19)?,
+        total_commits: row.get(20)?,
+        weekly_commits: row.get(21)?,
+        unique_contributors: row.get(22)?,
+        root_ids: Vec::new(),
+    })
+}
+
 pub fn get_repository_by_id(conn: &Connection, id: i64) -> Result<Option<RepositorySummary>> {
     let mut stmt = conn.prepare(
-        "SELECT id, root_id, name, path, git_dir_path, repo_type, remote_url, default_branch, head_branch,
-                is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
-                created_at, updated_at, health_score, total_commits, weekly_commits, unique_contributors
+        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, is_starred, starred_at, health_score, default_branch, head_branch,
+                remote_url, is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
+                created_at, updated_at, total_commits, weekly_commits, unique_contributors
          FROM repository_summary WHERE id = ?1",
     )?;
 
-    let repo = stmt.query_map([id], |row| {
-        Ok(RepositorySummary {
-            id: row.get(0)?,
-            root_id: row.get(1)?,
-            name: row.get(2)?,
-            path: row.get(3)?,
-            git_dir_path: row.get(4)?,
-            repo_type: row.get(5)?,
-            remote_url: row.get(6)?,
-            default_branch: row.get(7)?,
-            head_branch: row.get(8)?,
-            is_dirty: row.get(9)?,
-            last_commit_hash: row.get(10)?,
-            last_commit_at: row.get(11)?,
-            last_scanned_at: row.get(12)?,
-            last_indexed_at: row.get(13)?,
-            index_status: row.get(14)?,
-            created_at: row.get(15)?,
-            updated_at: row.get(16)?,
-            health_score: row.get(17)?,
-            total_commits: row.get(18)?,
-            weekly_commits: row.get(19)?,
-            unique_contributors: row.get(20)?,
-        })
-    })?;
+    let mut repo = stmt.query_row(params![id], row_to_repository_summary).ok();
 
-    let result: Vec<RepositorySummary> = repo.filter_map(Result::ok).collect();
-    Ok(result.into_iter().next())
+    if let Some(ref mut r) = repo {
+        r.root_ids = get_root_ids_for_repository(conn, r.id)?;
+    }
+
+    Ok(repo)
 }
 
 pub fn get_all_repositories(
@@ -141,39 +207,149 @@ pub fn get_all_repositories(
     offset: usize,
 ) -> Result<Option<Vec<RepositorySummary>>> {
     let mut stmt = conn.prepare(
-        "SELECT id, root_id, name, path, git_dir_path, repo_type, remote_url, default_branch, head_branch,
-                is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
-                created_at, updated_at, health_score, total_commits, weekly_commits, unique_contributors
+        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, is_starred, starred_at, health_score, default_branch, head_branch,
+                remote_url, is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
+                created_at, updated_at, total_commits, weekly_commits, unique_contributors
          FROM repository_summary ORDER BY updated_at DESC LIMIT ?1 OFFSET ?2",
     )?;
 
-    let repos = stmt.query_map([count, offset], |row| {
-        Ok(RepositorySummary {
-            id: row.get(0)?,
-            root_id: row.get(1)?,
-            name: row.get(2)?,
-            path: row.get(3)?,
-            git_dir_path: row.get(4)?,
-            repo_type: row.get(5)?,
-            remote_url: row.get(6)?,
-            default_branch: row.get(7)?,
-            head_branch: row.get(8)?,
-            is_dirty: row.get(9)?,
-            last_commit_hash: row.get(10)?,
-            last_commit_at: row.get(11)?,
-            last_scanned_at: row.get(12)?,
-            last_indexed_at: row.get(13)?,
-            index_status: row.get(14)?,
-            created_at: row.get(15)?,
-            updated_at: row.get(16)?,
-            health_score: row.get(17)?,
-            total_commits: row.get(18)?,
-            weekly_commits: row.get(19)?,
-            unique_contributors: row.get(20)?,
-        })
-    })?;
+    let repos_iter = stmt.query_map([count, offset], row_to_repository_summary)?;
+    let mut repos: Vec<RepositorySummary> = repos_iter.filter_map(Result::ok).collect();
 
-    Ok(Some(repos.filter_map(Result::ok).collect()))
+    for r in &mut repos {
+        r.root_ids = get_root_ids_for_repository(conn, r.id).unwrap_or_default();
+    }
+
+    Ok(Some(repos))
+}
+
+pub fn get_repositories_by_root_id(
+    conn: &Connection,
+    root_id: i64,
+) -> Result<Vec<RepositorySummary>> {
+    // When retrieving for a specific root, we use the root-specific created_at from repository_roots
+    let mut stmt = conn.prepare(
+        "SELECT r.id, r.name, r.path, r.git_dir_path, r.repo_type, r.is_enabled, r.is_starred, r.starred_at, r.health_score, r.default_branch, r.head_branch,
+                r.remote_url, r.is_dirty, r.last_commit_hash, r.last_commit_at, r.last_scanned_at, r.last_indexed_at, r.index_status, 
+                rr.created_at, r.updated_at, r.total_commits, r.weekly_commits, r.unique_contributors
+         FROM repository_roots rr
+         JOIN repository_summary r ON r.id = rr.repo_id
+         WHERE rr.root_id = ?1
+         ORDER BY r.name ASC",
+    )?;
+
+    let repos_iter = stmt.query_map([root_id], row_to_repository_summary)?;
+    let mut repos: Vec<RepositorySummary> = repos_iter.filter_map(Result::ok).collect();
+
+    for r in &mut repos {
+        r.root_ids = vec![root_id];
+    }
+
+    Ok(repos)
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct PaginatedRepositories {
+    pub items: Vec<RepositorySummary>,
+    pub next_cursor: Option<i64>,
+    pub has_more: bool,
+    pub total_count: usize,
+}
+
+pub fn get_paginated_repositories(
+    conn: &Connection,
+    search: Option<&str>,
+    filter: Option<&str>,
+    limit: usize,
+    cursor: Option<i64>,
+) -> Result<PaginatedRepositories> {
+    let mut where_clauses: Vec<String> = Vec::new();
+    let mut param_values: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+    if let Some(query) = search.filter(|s| !s.trim().is_empty()) {
+        let pattern = format!("%{}%", query.trim());
+        param_values.push(Box::new(pattern));
+        let idx = param_values.len();
+        where_clauses.push(format!("(name LIKE ?{idx} OR path LIKE ?{idx})"));
+    }
+
+    if let Some(f) = filter {
+        match f.to_lowercase().as_str() {
+            "clean" => where_clauses.push("is_dirty = 0".to_string()),
+            "modified" => where_clauses.push("is_dirty = 1".to_string()),
+            "unhealthy" => where_clauses.push("health_score < 0.7".to_string()),
+            "enabled" => where_clauses.push("is_enabled = 1".to_string()),
+            "disabled" => where_clauses.push("is_enabled = 0".to_string()),
+            "starred" => where_clauses.push("is_starred = 1".to_string()),
+            _ => {}
+        }
+    }
+
+    // Count total matches
+    let where_sql = if where_clauses.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", where_clauses.join(" AND "))
+    };
+
+    let count_query = format!("SELECT COUNT(*) FROM repository_summary {where_sql}");
+    let total_count: usize = {
+        let params_slice: Vec<&dyn rusqlite::ToSql> = param_values.iter().map(|p| p.as_ref()).collect();
+        conn.query_row(&count_query, rusqlite::params_from_iter(params_slice), |row| row.get(0))?
+    };
+
+    // Cursor clause for pagination (using id < cursor if ordered by id DESC)
+    if let Some(c) = cursor {
+        param_values.push(Box::new(c));
+        let idx = param_values.len();
+        where_clauses.push(format!("id < ?{idx}"));
+    }
+
+    let paginated_where_sql = if where_clauses.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", where_clauses.join(" AND "))
+    };
+
+    param_values.push(Box::new((limit + 1) as i64));
+    let limit_idx = param_values.len();
+
+    let sql = format!(
+        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, is_starred, starred_at, health_score, default_branch, head_branch,
+                remote_url, is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
+                created_at, updated_at, total_commits, weekly_commits, unique_contributors
+         FROM repository_summary
+         {paginated_where_sql}
+         ORDER BY id DESC
+         LIMIT ?{limit_idx}"
+    );
+
+    let params_slice: Vec<&dyn rusqlite::ToSql> = param_values.iter().map(|p| p.as_ref()).collect();
+    let mut stmt = conn.prepare(&sql)?;
+    let repos_iter = stmt.query_map(rusqlite::params_from_iter(params_slice), row_to_repository_summary)?;
+    let mut items: Vec<RepositorySummary> = repos_iter.filter_map(Result::ok).collect();
+
+    let has_more = items.len() > limit;
+    if has_more {
+        items.truncate(limit);
+    }
+
+    let next_cursor = if has_more {
+        items.last().map(|r| r.id)
+    } else {
+        None
+    };
+
+    for r in &mut items {
+        r.root_ids = get_root_ids_for_repository(conn, r.id).unwrap_or_default();
+    }
+
+    Ok(PaginatedRepositories {
+        items,
+        next_cursor,
+        has_more,
+        total_count,
+    })
 }
 
 pub fn get_repository_metrics(
@@ -305,8 +481,205 @@ pub fn get_activity_summary(
     Ok(result)
 }
 
+pub fn set_repository_starred(conn: &Connection, repo_id: i64, is_starred: bool) -> Result<bool> {
+    let now = chrono::Utc::now().to_rfc3339();
+    let rows = conn.execute(
+        r#"
+        UPDATE repositories
+        SET is_starred = ?1, starred_at = ?2, updated_at = ?3
+        WHERE id = ?4
+        "#,
+        params![is_starred, if is_starred { Some(now.as_str()) } else { None }, now, repo_id],
+    )?;
+    Ok(rows > 0)
+}
+
+pub fn get_starred_repositories(
+    conn: &Connection,
+    limit: usize,
+    offset: usize,
+) -> Result<Vec<RepositorySummary>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, is_starred, starred_at, health_score, default_branch, head_branch,
+                remote_url, is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
+                created_at, updated_at, total_commits, weekly_commits, unique_contributors
+         FROM repository_summary 
+         WHERE is_starred = 1
+         ORDER BY starred_at DESC
+         LIMIT ?1 OFFSET ?2",
+    )?;
+
+    let repos_iter = stmt.query_map([limit, offset], row_to_repository_summary)?;
+    let mut repos: Vec<RepositorySummary> = repos_iter.filter_map(Result::ok).collect();
+
+    for r in &mut repos {
+        r.root_ids = get_root_ids_for_repository(conn, r.id).unwrap_or_default();
+    }
+
+    Ok(repos)
+}
+
+pub fn get_recent_repositories(
+    conn: &Connection,
+    limit: usize,
+    offset: usize,
+) -> Result<Vec<RepositorySummary>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, path, git_dir_path, repo_type, is_enabled, is_starred, starred_at, health_score, default_branch, head_branch,
+                remote_url, is_dirty, last_commit_hash, last_commit_at, last_scanned_at, last_indexed_at, index_status, 
+                created_at, updated_at, total_commits, weekly_commits, unique_contributors
+         FROM repository_summary 
+         ORDER BY COALESCE(last_commit_at, updated_at) DESC
+         LIMIT ?1 OFFSET ?2",
+    )?;
+
+    let repos_iter = stmt.query_map([limit, offset], row_to_repository_summary)?;
+    let mut repos: Vec<RepositorySummary> = repos_iter.filter_map(Result::ok).collect();
+
+    for r in &mut repos {
+        r.root_ids = get_root_ids_for_repository(conn, r.id).unwrap_or_default();
+    }
+
+    Ok(repos)
+}
+
 pub fn get_repository_path(conn: &Connection, repo_id: i64) -> Result<Option<String>> {
     let mut stmt = conn.prepare("SELECT path FROM repositories WHERE id = ?1 LIMIT 1")?;
     let path: Option<String> = stmt.query_row([repo_id], |row| row.get(0))?;
     Ok(path)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::infrastructure::database::migrations::run_migrations;
+    use crate::infrastructure::database::repositories::tracked_roots;
+
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        run_migrations(&conn).unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_multi_root_repository_relationship() {
+        let conn = setup_test_db();
+
+        // 1. Add two tracked roots (parent & child)
+        let root1_id = tracked_roots::insert_tracked_root(&conn, "/home/user/projects", true).unwrap();
+        let root2_id = tracked_roots::insert_tracked_root(&conn, "/home/user/projects/backend", true).unwrap();
+
+        // 2. Discover / upsert repository under both roots
+        let repo_id = upsert_repository(
+            &conn,
+            "api-service",
+            "/home/user/projects/backend/api-service",
+            "/home/user/projects/backend/api-service/.git",
+            "standard",
+            Some("https://github.com/org/api.git"),
+            Some("main"),
+            Some("main"),
+        ).unwrap();
+
+        // Link to root 1
+        link_repository_to_root(&conn, root1_id, repo_id).unwrap();
+        // Link to root 2
+        link_repository_to_root(&conn, root2_id, repo_id).unwrap();
+
+        // 3. Verify root_ids contains both
+        let root_ids = get_root_ids_for_repository(&conn, repo_id).unwrap();
+        assert_eq!(root_ids, vec![root1_id, root2_id]);
+
+        // 4. Query by root1 and root2
+        let root1_repos = get_repositories_by_root_id(&conn, root1_id).unwrap();
+        let root2_repos = get_repositories_by_root_id(&conn, root2_id).unwrap();
+        assert_eq!(root1_repos.len(), 1);
+        assert_eq!(root2_repos.len(), 1);
+        assert_eq!(root1_repos[0].id, repo_id);
+        assert_eq!(root2_repos[0].id, repo_id);
+
+        // 5. Delete root 1: should remove link to root 1 but keep repository and root 2 link
+        let deleted = tracked_roots::delete_tracked_root(&conn, root1_id).unwrap();
+        assert!(deleted);
+
+        let remaining_roots = get_root_ids_for_repository(&conn, repo_id).unwrap();
+        assert_eq!(remaining_roots, vec![root2_id]);
+
+        let repo = get_repository_by_id(&conn, repo_id).unwrap();
+        assert!(repo.is_some());
+    }
+
+    #[test]
+    fn test_repository_enable_disable_and_sync_check() {
+        let conn = setup_test_db();
+        let root_id = tracked_roots::insert_tracked_root(&conn, "/home/user/projects", true).unwrap();
+
+        let repo_id = upsert_repository(
+            &conn,
+            "frontend",
+            "/home/user/projects/frontend",
+            "/home/user/projects/frontend/.git",
+            "standard",
+            None,
+            Some("main"),
+            Some("main"),
+        ).unwrap();
+        link_repository_to_root(&conn, root_id, repo_id).unwrap();
+
+        // By default enabled
+        assert!(is_repository_enabled_for_sync(&conn, repo_id).unwrap());
+
+        // Disable repository
+        set_repository_enabled(&conn, repo_id, false).unwrap();
+        assert!(!is_repository_enabled_for_sync(&conn, repo_id).unwrap());
+
+        // Re-enable repository
+        set_repository_enabled(&conn, repo_id, true).unwrap();
+        assert!(is_repository_enabled_for_sync(&conn, repo_id).unwrap());
+
+        // If tracked root is disabled, repo is not eligible for sync
+        tracked_roots::update_tracked_root_enabled(&conn, "/home/user/projects", false).unwrap();
+        assert!(!is_repository_enabled_for_sync(&conn, repo_id).unwrap());
+    }
+
+    #[test]
+    fn test_paginated_repositories() {
+        let conn = setup_test_db();
+        let root_id = tracked_roots::insert_tracked_root(&conn, "/home/user/projects", true).unwrap();
+
+        for i in 1..=5 {
+            let path = format!("/home/user/projects/repo{}", i);
+            let name = format!("repo{}", i);
+            let repo_id = upsert_repository(
+                &conn,
+                &name,
+                &path,
+                &format!("{}/.git", path),
+                "standard",
+                None,
+                Some("main"),
+                Some("main"),
+            ).unwrap();
+            link_repository_to_root(&conn, root_id, repo_id).unwrap();
+        }
+
+        let page1 = get_paginated_repositories(&conn, None, None, 2, None).unwrap();
+        assert_eq!(page1.items.len(), 2);
+        assert!(page1.has_more);
+        assert_eq!(page1.total_count, 5);
+
+        let page2 = get_paginated_repositories(&conn, None, None, 2, page1.next_cursor).unwrap();
+        assert_eq!(page2.items.len(), 2);
+        assert!(page2.has_more);
+
+        let page3 = get_paginated_repositories(&conn, None, None, 2, page2.next_cursor).unwrap();
+        assert_eq!(page3.items.len(), 1);
+        assert!(!page3.has_more);
+
+        // Search test
+        let search_result = get_paginated_repositories(&conn, Some("repo3"), None, 10, None).unwrap();
+        assert_eq!(search_result.items.len(), 1);
+        assert_eq!(search_result.items[0].name, "repo3");
+    }
+}
+
