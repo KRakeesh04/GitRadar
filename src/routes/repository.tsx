@@ -75,14 +75,15 @@ function RouteComponent() {
   const disabledCount = allRepos.filter(repo => !repo.isEnabled).length;
 
   const handleNextPage = () => {
-    if (!paginatedQuery.data?.nextCursor || !paginatedQuery.data.hasMore) return;
-    const nextCursor = paginatedQuery.data.nextCursor;
-    if (pageIndex + 1 < cursorHistory.length) {
-      setPageIndex(pageIndex + 1);
-    } else {
-      setCursorHistory([...cursorHistory, nextCursor]);
-      setPageIndex(pageIndex + 1);
-    }
+    const nextCursor = paginatedQuery.data?.nextCursor;
+    const hasMore = paginatedQuery.data?.hasMore;
+    if (nextCursor == null || !hasMore) return;
+    setPageIndex(prevIndex => {
+      setCursorHistory(prevHistory =>
+        prevIndex + 1 < prevHistory.length ? prevHistory : [...prevHistory, nextCursor]
+      );
+      return prevIndex + 1;
+    });
   };
 
   const handlePrevPage = () => {

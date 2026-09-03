@@ -157,10 +157,10 @@ export async function getPaginatedRepositories(params: {
   cursor?: number | null;
 }): Promise<PaginatedRepositories> {
   const response = await tauri<PaginatedRepositoriesResponse>('get_paginated_repositories', {
-    search: params.search || null,
-    filter: params.filter || null,
-    limit: params.limit || 20,
-    cursor: params.cursor || null,
+    search: params.search ?? null,
+    filter: params.filter ?? null,
+    limit: params.limit ?? 20,
+    cursor: params.cursor ?? null,
   });
 
   return {
