@@ -74,6 +74,7 @@ export function AddRootPathPopover({
             variant="ghost"
             size="icon-sm"
             aria-label="Close"
+            className="cursor-pointer"
             onClick={() => onOpenChange(false)}
           >
             <X className="h-4 w-4" />
@@ -91,7 +92,7 @@ export function AddRootPathPopover({
               />
               <Button
                 variant="outline"
-                className="h-9"
+                className="h-9 cursor-pointer"
                 onClick={selectFolder}
                 disabled={isSelecting}
               >
@@ -107,11 +108,11 @@ export function AddRootPathPopover({
           ) : null}
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" className="cursor-pointer" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
-            className="bg-(--brand) text-white hover:bg-(--brand-hover)"
+            className="bg-(--brand) text-white hover:bg-(--brand-hover) cursor-pointer"
             onClick={submit}
             disabled={isSaving}
           >

@@ -85,7 +85,7 @@ function RepoListItem({ repo }: { repo: RepositoryInfo }) {
   return (
     <a
       href={`/repository/${repo.id}`}
-      className="block rounded-md px-0.5 py-0.5 text-sidebar-foreground transition-colors hover:text-(--brand)"
+      className="block rounded-md px-0.5 py-0.75 text-sidebar-foreground transition-colors hover:text-(--brand)"
     >
       <div className="flex items-center gap-1.5">
         <span className="text-sm lg:font-semibold leading-5 truncate">{repo.name}</span>
@@ -179,7 +179,7 @@ export function AppSidebar() {
         <div className="w-9 h-9 bg-(--brand) rounded-lg flex items-center justify-center shrink-0 ml-0.5 group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:group-hover:hidden transition-colors">
           <FolderGit2 className="text-white" size={25} />
         </div>
-        <span className="text-sidebar-foreground text-2xl font-bold group-data-[collapsible=icon]:hidden">
+        <span className="text-sidebar-foreground text-2xl font-bold group-data-[collapsible=icon]:hidden cursor-default">
           GitRadar
         </span>
         <button
@@ -255,7 +255,7 @@ export function AppSidebar() {
                   <div className="space-y-2 py-2 min-h-55">
                     {[1, 2, 3, 4, 5, 6].map(i => (
                       <div key={i} className="animate-pulse space-y-1.5 px-0.5">
-                        <div className="h-4 w-3/4 rounded bg-muted" />
+                        <div className="h-8 w-3/4 rounded bg-muted" />
                         <div className="h-3 w-1/2 rounded bg-muted" />
                       </div>
                     ))}

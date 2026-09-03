@@ -54,6 +54,7 @@ function RouteComponent() {
   const deleteMutation = useDeleteTrackedRoot();
   const [expandedPathId, setExpandedPathId] = useState<number | null>(null);
   const [isAddPopoverOpen, setIsAddPopoverOpen] = useState(false);
+  const [isAddingRoot, setIsAddingRoot] = useState(false);
   const [rootToDelete, setRootToDelete] = useState<RootPath | null>(null);
   const [syncingRootId, setSyncingRootId] = useState<number | null>(null);
 
@@ -92,10 +93,15 @@ function RouteComponent() {
   const modifiedCount = allRepos.filter(repo => repo.isDirty).length;
 
   const addRootPath = async (path: string) => {
-    await addMutation.mutateAsync(path);
-    await rescanMutation.mutateAsync();
-    setIsAddPopoverOpen(false);
-    toast.success('Root path added');
+    setIsAddingRoot(true);
+    try {
+      await addMutation.mutateAsync(path);
+      await rescanMutation.mutateAsync();
+      setIsAddPopoverOpen(false);
+      toast.success('Root path added');
+    } finally {
+      setIsAddingRoot(false);
+    }
   };
 
   const deleteRootPath = () => {
@@ -204,7 +210,7 @@ function RouteComponent() {
         open={isAddPopoverOpen}
         onOpenChange={setIsAddPopoverOpen}
         onAdd={addRootPath}
-        isSaving={addMutation.isPending}
+        isSaving={isAddingRoot || addMutation.isPending || rescanMutation.isPending}
       />
       <DeleteRootPathDialog
         rootPath={rootToDelete}
@@ -275,6 +281,7 @@ function RootPathCard({
                   size="icon-sm"
                   aria-label={`Refresh ${rootPath.name}`}
                   onClick={onRescan}
+                  className="cursor-pointer"
                   disabled={
                     isRescanning || isSyncing || rootPath.repos.length === 0 || !rootPath.enabled
                   }
@@ -287,6 +294,7 @@ function RootPathCard({
                   variant="ghost"
                   size="icon-sm"
                   aria-label={`Delete ${rootPath.name}`}
+                  className="cursor-pointer"
                   onClick={onDelete}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -316,7 +324,7 @@ function RootPathCard({
               render={
                 <button
                   type="button"
-                  className="flex w-full items-center border-t px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/50"
+                  className="flex w-full items-center border-t px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/50 cursor-pointer"
                   onClick={onToggle}
                 >
                   <span>{rootPath.repos.length} repositories</span>
